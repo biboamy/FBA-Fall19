@@ -35,7 +35,7 @@ for band in BAND:
             midi_score['band'] = band
             midi_score['instrument'] = instrument
             midi_score['segment'] = SEGMENT
-            midi_file_name = "{}_{}_{}.midi".format(year, band, instrument)
+            midi_file_name = "{}_{}_{}.mid".format(year, band, instrument)
             pm = pretty_midi.PrettyMIDI(PATH_FBA_MIDI + midi_file_name)
             midi_score['piano_roll'] = pm.get_piano_roll()
             perf_assessment_midi.append(midi_score)
@@ -43,11 +43,11 @@ for band in BAND:
     print(len(perf_assessment_midi))
     file_name = band + '_' + str(SEGMENT) + '_midi'
     if sys.version_info[0] < 3:
-        with open('../data/audio/' + file_name + '.dill', 'wb') as f:
+        with open('../data/midi/' + file_name + '.dill', 'wb') as f:
             dill.dump(perf_assessment_midi, f)
-        scipy.io.savemat('data/audio/' + file_name + '.mat', mdict={'perf_data': perf_assessment_midi})
+        scipy.io.savemat('data/midi/' + file_name + '.mat', mdict={'perf_data': perf_assessment_midi})
     else:
-        with open('../data/audio/' + file_name + '_3.dill', 'wb') as f:
+        with open('../data/midi/' + file_name + '_3.dill', 'wb') as f:
             dill.dump(perf_assessment_midi, f)
 
 # create data holder

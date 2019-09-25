@@ -291,6 +291,4 @@ class DataUtils(object):
             assessment_data['class_ratings'] = [round(x * 10) for x in ground_truth[student_idx]]
             perf_assessment_data.append(assessment_data)
             idx += 1
-            if idx % 10 == 0:
-                print("{0:.0f}%".format(idx / len(student_ids)))
         return perf_assessment_data
