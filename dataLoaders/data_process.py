@@ -4,6 +4,7 @@ from collections import defaultdict
 import dill
 import numpy as np
 import scipy.io
+import pypianoroll
 import pretty_midi
 from DataUtils import DataUtils
 
@@ -26,17 +27,25 @@ else:
 
 # create midi data (piano roll)
 midi_score = {}
+unit = "resize"
 for band in BAND:
     midi_score = {}
     for instrument in INSTRUMENT:
         midi_score[instrument] = {}
         for year in YEAR:
             midi_file_name = "{}_{}_{}.mid".format(year, band, instrument)
-            pm = pretty_midi.PrettyMIDI(PATH_FBA_MIDI + midi_file_name)
-            midi_score[instrument][year] = pm.get_piano_roll()
+            if unit == "sec":
+                pm = pretty_midi.PrettyMIDI(PATH_FBA_MIDI + midi_file_name)
+                midi_score[instrument][year] = pm.get_piano_roll()
+            elif unit == "beat":
+                pm = pypianoroll.Multitrack(PATH_FBA_MIDI + midi_file_name)
+                midi_score[instrument][year] = pm.tracks[0].pianoroll.T
+            elif unit == "resize":
+                pm = pretty_midi.PrettyMIDI(PATH_FBA_MIDI + midi_file_name)
+                midi_score[instrument][year] = pm
 
     print(len(midi_score))
-    file_name = band + '_' + str(SEGMENT) + '_midi'
+    file_name = band + '_' + str(SEGMENT) + '_midi_' + unit
     if sys.version_info[0] < 3:
         with open('../data/midi/' + file_name + '.dill', 'wb') as f:
             dill.dump(midi_score, f)

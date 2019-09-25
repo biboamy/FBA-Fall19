@@ -23,19 +23,33 @@ def load_data(band='middle', feat='pitch contour'):
     return trPC, vaPC, SC
 
 class Data2Torch(Dataset):
-    def __init__(self, data):
+    def __init__(self, data, resample=False):
         self.xPC = data[0]
         self.xSC = data[1]
+        self.resample = resample
 
     def __getitem__(self, index):
 
         # pitch contour
-        mXPC = torch.from_numpy(self.xPC[index]['pitch_contour']).float()
+        PC = self.xPC[index]['pitch_contour']
+        mXPC = torch.from_numpy(PC).float()
 
         # musical score
         year = self.xPC[index]['year']
         instrument = self.xPC[index]['instrument']
-        mXSC = torch.from_numpy(self.xSC[instrument][year]).float()
+        SC = self.xSC[instrument][year]
+
+        # sample the midi to the length of audio
+        if self.resample == True:
+            l_target = PC.shape[1]
+            t_midi = SC.get_end_time()
+            mXSC = SC.get_piano_roll(fs = np.int(l_target / t_midi))
+            l_midi = mXSC.shape[1]
+            # pad 0 to ensure same length as feature
+            mXSC = np.pad(mXSC, ((0,0),(0,l_target-l_midi)), 'constant')
+            mXSC = torch.from_numpy(mXSC).float()
+        else:
+            mXSC = torch.from_numpy(SC).float()
 
         # ratings
         mY = torch.from_numpy(self.xPC[index]['ratings']).float()
