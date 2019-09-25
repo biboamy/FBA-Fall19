@@ -1,5 +1,6 @@
 from lib import distance_loss, classify_loss
 import torch.optim as optim
+import time
 from torch.autograd import Variable
 
 class Trainer:
