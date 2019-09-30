@@ -10,14 +10,14 @@ def load_data(band='middle', feat='pitch contour'):
     assert(feat=='pitch contour')
 
     # Read features from .dill files
-    pc_file = './data/pitch_contour/{}_2_pc_3_'.format(band)
+    pc_file = '../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # train
     trPC = np.array(dill.load(open(pc_file + 'train.dill', 'rb')))
     # valid
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = './data/midi/{}_2_midi_3.dill'.format(band)
+    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_3.dill'.format(band)
     SC = dill.load(open(mid_file, 'rb')) # all scores
 
     return trPC, vaPC, SC
@@ -36,8 +36,8 @@ class Data2Torch(Dataset):
         # musical score
         year = self.xPC[index]['year']
         instrument = self.xPC[index]['instrumemt']
-        
-        SC = self.xSC[instrument][year]
+        # score feature, extract as a sequence
+        SC =  np.argmax(self.xSC[instrument][year], axis=0)
 
         # sample the midi to the length of audio
         if self.resample == True:
@@ -53,21 +53,38 @@ class Data2Torch(Dataset):
 
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
+        mY = mY[2] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
 
         return mXPC, mXSC, mY
     
     def __len__(self):
         return len(self.xPC)
 
+# padding each sequence in the batch to the same length
+def my_collate(batch):
+    max_length_1 = 0
+    max_length_2 = 0
+    for data in batch:
+        max_length_1 = max(data[0].shape[0],max_length_1)
+        max_length_2 = max(data[1].shape[0],max_length_2)
+    for i, data in enumerate(batch):
+        data = (torch.nn.functional.pad(data[0], (0, max_length_1-data[0].shape[0]), "constant", 0), \
+                torch.nn.functional.pad(data[1], (0, max_length_2-data[1].shape[0]), "constant", 0), \
+                data[2])
+        batch[i] = data
+    batch = list(filter(lambda x : x is not None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
+
+# loss function, calculate the distane between two latent as the rating
 def distance_loss(pitch_v, score_v, target):
 
-	pdist = nn.PairwiseDistance(p=2)
-	pred = pdist(pitch_v, score_v)
+    pdist = nn.PairwiseDistance(p=2)
+    pred = pdist(pitch_v, score_v)
 
-	loss_func = nn.MSELoss()
-	loss = loss_func(pred, target)
+    loss_func = nn.MSELoss()
+    loss = loss_func(pred, target)
 
-	return loss
+    return loss
 
 def classify_loss(pitch_v, score_v, target):
 

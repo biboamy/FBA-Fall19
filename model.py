@@ -92,7 +92,7 @@ class Net(nn.Module):
         self.PCmodel = PCConvLstmNet()
         self.SCmodel = PCConvLstmNet()
 
-    def forward(self, input):
+    def forward(self, pitch, score):
         pitch_v = self.PCmodel(pitch)
         score_v = self.SCmodel(score)
         return pitch_v, score_v
