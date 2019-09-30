@@ -4,23 +4,23 @@ import time
 from torch.autograd import Variable
 
 class Trainer:
-    def __init__(self, PCmodel, SCmodel, lr, epoch, save_fn):
+    def __init__(self, model, lr, epoch, save_fn):
         self.epoch = epoch
-        self.PCmodel = PCmodel
-        self.SCmodel = SCmodel
+        self.model = model
         self.lr = lr
         self.save_fn = save_fn
 
         print('Start Training #Epoch:%d'%(epoch))
 
-    def fit(self, tr_loader, va_loader, we):
+    def fit(self, tr_loader, va_loader):
         st = time.time()
 
         #define object
         save_dict = {}
         save_dict['tr_loss'] = []
         best_loss = 1000000000
-        opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
+
+        opt = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=1e-4)
 
         for e in range(1, self.epoch+1):
             #learning rate
@@ -36,8 +36,7 @@ class Trainer:
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
                 #predict latent vector 
-                pitch_v = self.PCmodel(pitch)
-                score_v = self.SCmodel(score)
+                pitch_v, score_v = self.model(pitch)
                 
                 #calculate loss
                 loss_train = distance_loss(pitch_v, score_v, target)  
@@ -49,8 +48,7 @@ class Trainer:
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
                 #predict latent vector 
-                pitch_v = self.PCmodel(pitch)
-                score_v = self.SCmodel(score)
+                pitch_v, score_v = self.model(pitch)
                 
                 #calculate loss
                 loss_val = distance_loss(pitch_v, score_v, target) 

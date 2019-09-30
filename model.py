@@ -85,3 +85,14 @@ class PCConvLstmNet(nn.Module):
         self.hidden = Variable(torch.zeros(self.n_layers, mini_batch_size, self.hidden_size))
         if torch.cuda.is_available():
             self.hidden = self.hidden.cuda()
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.PCmodel = PCConvLstmNet()
+        self.SCmodel = PCConvLstmNet()
+
+    def forward(self, input):
+        pitch_v = self.PCmodel(pitch)
+        score_v = self.SCmodel(score)
+        return pitch_v, score_v

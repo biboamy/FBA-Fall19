@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import torch, json
 import torch.nn as nn
 from torch.utils.data import Dataset
 
@@ -18,7 +18,7 @@ def load_data(band='middle', feat='pitch contour'):
 
     # Read scores from .dill files
     mid_file = './data/midi/{}_2_midi_3.dill'.format(band)
-    SC = np.array(dill.load(open(mid_file, 'rb'))) # all scores
+    SC = dill.load(open(mid_file, 'rb')) # all scores
 
     return trPC, vaPC, SC
 
@@ -33,10 +33,10 @@ class Data2Torch(Dataset):
         # pitch contour
         PC = self.xPC[index]['pitch_contour']
         mXPC = torch.from_numpy(PC).float()
-
         # musical score
         year = self.xPC[index]['year']
-        instrument = self.xPC[index]['instrument']
+        instrument = self.xPC[index]['instrumemt']
+        
         SC = self.xSC[instrument][year]
 
         # sample the midi to the length of audio
@@ -52,7 +52,7 @@ class Data2Torch(Dataset):
             mXSC = torch.from_numpy(SC).float()
 
         # ratings
-        mY = torch.from_numpy(self.xPC[index]['ratings']).float()
+        mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
 
         return mXPC, mXSC, mY
     
