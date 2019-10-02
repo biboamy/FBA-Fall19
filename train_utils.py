@@ -31,6 +31,7 @@ class Trainer:
             opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
             
             # Training
+            loss_train = 0
             for batch_idx, _input in enumerate(tr_loader):
                 self.model.zero_grad()  
 
@@ -40,11 +41,13 @@ class Trainer:
                 pitch_v, score_v = self.model(pitch, score)
                 
                 #calculate loss
-                loss_train = distance_loss(pitch_v, score_v, target)  
-                loss_train.backward()
+                loss = distance_loss(pitch_v, score_v, target)  
+                loss.backward()
                 opt.step()
+                loss_train += loss
 
             # Validate
+            loss_val = 0
             for batch_idx, _input in enumerate(va_loader):
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
@@ -52,16 +55,24 @@ class Trainer:
                 pitch_v, score_v = self.model(pitch, score)
                 
                 #calculate loss
-                loss_val = distance_loss(pitch_v, score_v, target) 
+                loss_val += distance_loss(pitch_v, score_v, target) 
                     
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Iter[%4d/%4d] Loss_train %4f  Loss_val %4f  Time %d'
-                    %(e, self.epoch, batch_idx+1, len(tr_loader), loss_train, loss_val, time.time() - st))
+            sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
+                    %(e, self.epoch, loss_train, loss_val, time.time() - st))
             sys.stdout.flush()
             print ('\n')
 
             # save model
             if loss_val < best_loss:
                 save_dict['state_dict'] = self.model.state_dict()
-                torch.save(save_dict, self.save_fn+'e_%d'%(e))
+                torch.save(save_dict, self.save_fn+'model')
+                best_epoch = e
+                best_loss = loss_val
+
+            # early stopping
+            print(e, best_epoch)
+            if (e-best_epoch) > 50:
+                print('early stopping')
+                break

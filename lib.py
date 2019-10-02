@@ -17,10 +17,23 @@ def load_data(band='middle', feat='pitch contour'):
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_3.dill'.format(band)
+    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_sec_3.dill'.format(band)
     SC = dill.load(open(mid_file, 'rb')) # all scores
 
     return trPC, vaPC, SC
+
+def load_test_data(band='middle', feat='pitch contour'):
+    # Load pitch contours
+    # Currently only allow pitch contour as feature
+    import dill
+    assert(feat=='pitch contour')
+
+    # Read features from .dill files
+    pc_file = '../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
+    # test
+    tePC = np.array(dill.load(open(pc_file + 'test.dill', 'rb')))
+
+    return tePC
 
 class Data2Torch(Dataset):
     def __init__(self, data, resample=False):
@@ -80,6 +93,7 @@ def distance_loss(pitch_v, score_v, target):
 
     pdist = nn.PairwiseDistance(p=2)
     pred = pdist(pitch_v, score_v)
+    pred = torch.clamp(pred, 0, 1)
 
     loss_func = nn.MSELoss()
     loss = loss_func(pred, target)
