@@ -91,10 +91,8 @@ def my_collate(batch):
 # loss function, calculate the distane between two latent as the rating
 def distance_loss(pitch_v, score_v, target):
 
-    pdist = nn.PairwiseDistance(p=2)
-    pred = pdist(pitch_v, score_v)
-    act = nn.Sigmoid()
-    pred = act(pred)
+    cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+    pred = cos(pitch_v, score_v)
  
     loss_func = nn.MSELoss()
     loss = loss_func(pred, target)

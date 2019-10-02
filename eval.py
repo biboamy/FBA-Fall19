@@ -24,7 +24,7 @@ def evaluate_model(model, dataloader):
     all_predictions = []
     all_targets = []
     for i, (_input) in enumerate(dataloader):
-        pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
+        pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
         target = target.view(-1,1)
         pitch_v, score_v = model(pitch, score)
         out = distance_loss(pitch_v, score_v, target.squeeze(1)) [1]
@@ -55,5 +55,3 @@ val_metrics = evaluate_model(model, va_loader)
 print('valid metrics', val_metrics)
 test_metrics = evaluate_model(model, te_loader)
 print('test metrics', test_metrics)
-
-print("Training Rsq:")
