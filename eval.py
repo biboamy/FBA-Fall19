@@ -27,7 +27,7 @@ def evaluate_model(model, dataloader):
         pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
         target = target.view(-1,1)
         pitch_v, score_v = model(pitch, score)
-        out = distance_loss(pitch_v, score_v, target)[1] 
+        out = distance_loss(pitch_v, score_v, target.squeeze(1)) [1]
         all_predictions.extend(out.data.cpu().numpy())
         all_targets.extend(target.data.cpu().numpy())
         #print(out.detach().data.cpu().numpy(),target.detach().data.cpu().numpy())
@@ -45,7 +45,7 @@ tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC]), **kwargs)
 va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC]), **kwargs)
 te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC]), **kwargs)
 
-model_path = './model/2019930/RNN_similarity/model'
+model_path = './model/2019102/RNN_similarity/model'
 model = Net().cuda()
 model.load_state_dict(torch.load(model_path)['state_dict'])
 

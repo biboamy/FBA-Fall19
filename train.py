@@ -11,7 +11,7 @@ feat = 'pitch contour'
 batch_size = 16
 num_workers = 2
 shuffle = True
-epoch = 100
+epoch = 1000
 lr = 0.01
 
 # model saving path

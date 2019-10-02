@@ -41,7 +41,7 @@ class Trainer:
                 pitch_v, score_v = self.model(pitch, score)
                 
                 #calculate loss
-                loss = distance_loss(pitch_v, score_v, target)  
+                loss = distance_loss(pitch_v, score_v, target) [0] 
                 loss.backward()
                 opt.step()
                 loss_train += loss
@@ -55,7 +55,7 @@ class Trainer:
                 pitch_v, score_v = self.model(pitch, score)
                 
                 #calculate loss
-                loss_val += distance_loss(pitch_v, score_v, target) 
+                loss_val += distance_loss(pitch_v, score_v, target) [0]
                     
             # print model result
             sys.stdout.write('\r')

@@ -17,7 +17,7 @@ def load_data(band='middle', feat='pitch contour'):
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_sec_3.dill'.format(band)
+    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_beat_3.dill'.format(band)
     SC = dill.load(open(mid_file, 'rb')) # all scores
 
     return trPC, vaPC, SC
@@ -93,12 +93,13 @@ def distance_loss(pitch_v, score_v, target):
 
     pdist = nn.PairwiseDistance(p=2)
     pred = pdist(pitch_v, score_v)
-    pred = torch.clamp(pred, 0, 1)
-
+    act = nn.Sigmoid()
+    pred = act(pred)
+ 
     loss_func = nn.MSELoss()
     loss = loss_func(pred, target)
 
-    return loss
+    return loss, pred
 
 def classify_loss(pitch_v, score_v, target):
 
