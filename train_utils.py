@@ -2,6 +2,7 @@ from lib import distance_loss, classify_loss
 import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
+from tensorboard_logger import configure, log_value
 
 class Trainer:
     def __init__(self, model, lr, epoch, save_fn):
@@ -11,6 +12,16 @@ class Trainer:
         self.save_fn = save_fn
 
         print('Start Training #Epoch:%d'%(epoch))
+
+        # declare save file name
+        file_info = 'tensorlog'
+
+        import datetime
+
+        current = datetime.datetime.now()
+
+        # configure tensor-board logger
+        configure('runs/' + file_info + current.strftime("%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader):
         st = time.time()
@@ -41,7 +52,7 @@ class Trainer:
                 pitch_v, score_v = self.model(pitch, score)
                 
                 #calculate loss
-                loss = distance_loss(pitch_v, score_v, target) [0] 
+                loss = distance_loss(pitch_v, score_v, target)[0]
                 loss.backward()
                 opt.step()
                 loss_train += loss
@@ -64,6 +75,10 @@ class Trainer:
             sys.stdout.flush()
             print ('\n')
 
+            # log data for visualization later
+            log_value('train_loss', loss_train, e)
+            log_value('val_loss', loss_val, e)
+
             # save model
             if loss_val < best_loss:
                 save_dict['state_dict'] = self.model.state_dict()
@@ -72,7 +87,7 @@ class Trainer:
                 best_loss = loss_val
 
             # early stopping
-            print(e, best_epoch)
             if (e-best_epoch) > 50:
+                print(e, best_epoch)
                 print('early stopping')
                 break

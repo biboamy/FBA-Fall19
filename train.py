@@ -6,13 +6,14 @@ from lib import load_data, Data2Torch, my_collate
 
 band = 'middle'
 feat = 'pitch contour'
+midi_op = 'resize'
 
 # training parameters
 batch_size = 16
 num_workers = 2
 shuffle = True
 epoch = 1000
-lr = 0.01
+lr = 0.001
 
 # model saving path
 date = date.today()
@@ -21,13 +22,18 @@ if not os.path.exists(out_model_fn):
     os.makedirs(out_model_fn)
 
 # load training and validation data (function inside lib.py)
-trPC, vaPC, SC = load_data(band, feat)
+trPC, vaPC, SC = load_data(band, feat, midi_op)
+
+# if resize the midi to fit the length of audio
+resample = False
+if midi_op == 'resize':
+    resample = True
 
 # prepare dataloader (function inside lib.py)
 t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
 v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
-tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC]), collate_fn=my_collate, **t_kwargs)
-va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC]), collate_fn=my_collate, **t_kwargs)
+tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], resample), collate_fn=my_collate, **t_kwargs)
+va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], resample), collate_fn=my_collate, **t_kwargs)
 
 # build model (function inside model.py)
 model = Net()

@@ -3,7 +3,7 @@ import torch, json
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-def load_data(band='middle', feat='pitch contour'):
+def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
     import dill
@@ -17,7 +17,7 @@ def load_data(band='middle', feat='pitch contour'):
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_beat_3.dill'.format(band)
+    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
     SC = dill.load(open(mid_file, 'rb')) # all scores
 
     return trPC, vaPC, SC
@@ -50,23 +50,25 @@ class Data2Torch(Dataset):
         year = self.xPC[index]['year']
         instrument = self.xPC[index]['instrumemt']
         # score feature, extract as a sequence
-        SC =  np.argmax(self.xSC[instrument][year], axis=0)
+        SC =  self.xSC[instrument][year]
 
         # sample the midi to the length of audio
         if self.resample == True:
-            l_target = PC.shape[1]
+            l_target = PC.shape[0]
             t_midi = SC.get_end_time()
             mXSC = SC.get_piano_roll(fs = np.int(l_target / t_midi))
             l_midi = mXSC.shape[1]
             # pad 0 to ensure same length as feature
             mXSC = np.pad(mXSC, ((0,0),(0,l_target-l_midi)), 'constant')
+            mXSC = np.argmax(mXSC, axis=0)
             mXSC = torch.from_numpy(mXSC).float()
         else:
+            SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
 
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[2] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
+        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
 
         return mXPC, mXSC, mY
     

@@ -35,17 +35,23 @@ def evaluate_model(model, dataloader):
 
 band = 'middle'
 feat = 'pitch contour'
+midi_op = 'resize'
 num_workers = 4
 
-trPC, vaPC, SC = load_data(band, feat)
+# if resize the midi to fit the length of audio
+resample = False
+if midi_op == 'resize':
+    resample = True
+
+trPC, vaPC, SC = load_data(band, feat, 'resize')
 tePC = load_test_data(band, feat)
 
 kwargs = {'num_workers': num_workers, 'pin_memory': True}
-tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC]), **kwargs)
-va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC]), **kwargs)
-te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC]), **kwargs)
+tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], resample), **kwargs)
+va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], resample), **kwargs)
+te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], resample), **kwargs)
 
-model_path = './model/2019102/RNN_similarity/model'
+model_path = './model/2019109/RNN_similarity/model'
 model = Net().cuda()
 model.load_state_dict(torch.load(model_path)['state_dict'])
 
