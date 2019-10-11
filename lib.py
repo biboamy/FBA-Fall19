@@ -69,7 +69,7 @@ class Data2Torch(Dataset):
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
         mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
-
+        
         return mXPC, mXSC, mY
     
     def __len__(self):
@@ -77,17 +77,24 @@ class Data2Torch(Dataset):
 
 # padding each sequence in the batch to the same length
 def my_collate(batch):
-    max_length_1 = 0
-    max_length_2 = 0
-    for data in batch:
-        max_length_1 = max(data[0].shape[0],max_length_1)
-        max_length_2 = max(data[1].shape[0],max_length_2)
+ 
+    import random
+    num = 3
+  
     for i, data in enumerate(batch):
-        data = (torch.nn.functional.pad(data[0], (0, max_length_1-data[0].shape[0]), "constant", 0), \
-                torch.nn.functional.pad(data[1], (0, max_length_2-data[1].shape[0]), "constant", 0), \
-                data[2])
+        pc = []
+        sc = []
+        for j in range(num):
+            start = round(random.uniform(0, 1400))
+            pc.append(data[0][start:start+1000].view(1,1000))
+            sc.append(data[1][start:start+1000].view(1,1000))
+  
+        data = (torch.cat(pc,0), \
+                torch.cat(sc,0), \
+                data[2].repeat(num))
+        
         batch[i] = data
-    batch = list(filter(lambda x : x is not None, batch))
+
     return torch.utils.data.dataloader.default_collate(batch)
 
 # loss function, calculate the distane between two latent as the rating
@@ -95,12 +102,15 @@ def distance_loss(pitch_v, score_v, target):
 
     cos = nn.CosineSimilarity(dim=1, eps=1e-6)
     pred = cos(pitch_v, score_v)
- 
-    loss_func = nn.MSELoss()
-    loss = loss_func(pred, target)
 
+    loss_func = nn.MSELoss()
+    loss = loss_func(pred, target.reshape(-1))
     return loss, pred
 
-def classify_loss(pitch_v, score_v, target):
-
-	return loss
+def get_weight(Ytr):
+    mp = Ytr[:].sum(0).sum(1)
+    mmp = mp.astype(np.float32) / mp.sum()
+    cc=((mmp.mean() / mmp) * ((1-mmp)/(1 - mmp.mean())))**0.3
+    cc[3]=1
+    inverse_feq = torch.from_numpy(cc)
+    return inverse_feq

@@ -8,6 +8,8 @@ from scipy.stats import pearsonr
 
 def evaluate_classification(targets, predictions):
     print(targets.max(),targets.min(),predictions.max(),predictions.min())
+    predictions[predictions>1]=1
+    predictions[predictions<0]=0
     r2 = metrics.r2_score(targets, predictions)
     corrcoef, p = pearsonr(np.squeeze(targets), predictions)
     targets = np.round(targets*10).astype(int)
@@ -51,7 +53,7 @@ tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], resample), **kwar
 va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], resample), **kwargs)
 te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], resample), **kwargs)
 
-model_path = './model/2019109/RNN_similarity/model'
+model_path = './model/20191010/Similarity1_aug5/model'
 model = Net().cuda()
 model.load_state_dict(torch.load(model_path)['state_dict'])
 

@@ -1,4 +1,4 @@
-from lib import distance_loss, classify_loss
+from lib import distance_loss
 import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
@@ -49,10 +49,10 @@ class Trainer:
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
                 #predict latent vectors 
-                pitch_v, score_v = self.model(pitch, score)
+                pitch_v, score_v = self.model(pitch.reshape(-1,pitch.shape[-1]), score.reshape(-1,pitch.shape[-1]))
                 
                 #calculate loss
-                loss = distance_loss(pitch_v, score_v, target)[0]
+                loss = distance_loss(pitch_v, score_v, target.reshape(-1))[0]
                 loss.backward()
                 opt.step()
                 loss_train += loss
@@ -63,10 +63,10 @@ class Trainer:
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
                 #predict latent vectors 
-                pitch_v, score_v = self.model(pitch, score)
+                pitch_v, score_v = self.model(pitch.reshape(-1,pitch.shape[-1]), score.reshape(-1,pitch.shape[-1]))
                 
                 #calculate loss
-                loss_val += distance_loss(pitch_v, score_v, target) [0]
+                loss_val += distance_loss(pitch_v, score_v, target.reshape(-1)) [0]
                     
             # print model result
             sys.stdout.write('\r')
@@ -87,7 +87,7 @@ class Trainer:
                 best_loss = loss_val
 
             # early stopping
-            if (e-best_epoch) > 50:
+            if (e-best_epoch) > 100:
                 print(e, best_epoch)
                 print('early stopping')
                 break

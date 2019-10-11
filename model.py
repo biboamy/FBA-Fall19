@@ -86,11 +86,75 @@ class PCConvLstmNet(nn.Module):
         if torch.cuda.is_available():
             self.hidden = self.hidden.cuda()
 
+class PCConvNet(nn.Module):
+    """
+    Class to implement a deep neural model for music performance assessment using
+     pitch contours as input
+    """
+
+    def __init__(self, mode=0):
+        """
+        Initializes the class with internal parameters for the different layers
+        Args:
+            mode:       int, 0,1 specifying different minimum input size, 0: 1000, 1:500
+        """
+        super(PCConvNet, self).__init__()
+        if mode == 0: # for minimum input size of 1000
+            # initialize model internal parameters
+            self.kernel_size = 7
+            self.stride = 3
+            self.n0_features = 4
+            self.n1_features = 8
+            self.n2_features = 16
+            # define the different convolutional modules
+            self.conv = nn.Sequential(
+                # define the 1st convolutional layer
+                nn.Conv1d(1, self.n0_features, self.kernel_size, self.stride),# output is (1000 - 7)/3 + 1 = 332
+                nn.BatchNorm1d(self.n0_features),
+                nn.ReLU(),
+                #nn.Dropout(),
+                # define the 2nd convolutional layer
+                nn.Conv1d(self.n0_features, self.n1_features, self.kernel_size, self.stride), # output is (332 - 7)/3 + 1 = 109
+                nn.BatchNorm1d(self.n1_features),
+                nn.ReLU(),
+                #nn.Dropout(),
+                # define the 3rd convolutional layer
+                nn.Conv1d(self.n1_features, self.n2_features, self.kernel_size, self.stride), # output is (109 - 7)/3 + 1 = 35
+                nn.BatchNorm1d(self.n2_features),
+                nn.ReLU(),
+                #nn.Dropout(),
+                # define the final fully connected layer (fully convolutional)
+                nn.Conv1d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
+                nn.BatchNorm1d( self.n2_features),
+                nn.ReLU(),
+                #nn.Dropout()
+            )
+
+    def forward(self, input):
+        """
+        Defines the forward pass of the PitchContourAssessor module
+        Args:
+                input:  torch Variable (mini_batch_size x zero_pad_len), of input pitch contours
+                        mini_batch_size:    size of the mini batch during one training iteration
+                        zero_pad_len:       length to which each input sequence is zero-padded
+                        seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
+        """
+        # get mini batch size from input and reshape
+        mini_batch_size, sig_size = input.size()
+        input = input.view(mini_batch_size, 1, sig_size)
+
+        # compute the forward pass through the convolutional layer
+        conv_out = self.conv(input)
+        # compute final output
+        final_output = torch.mean(conv_out, 2)
+        
+        return final_output
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.PCmodel = PCConvLstmNet()
-        self.SCmodel = PCConvLstmNet()
+        self.PCmodel = PCConvNet()
+        self.SCmodel = PCConvNet()
 
     def forward(self, pitch, score):
         pitch_v = self.PCmodel(pitch)

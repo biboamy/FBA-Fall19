@@ -3,6 +3,7 @@ from datetime import date
 from model import Net
 from train_utils import Trainer
 from lib import load_data, Data2Torch, my_collate
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
 band = 'middle'
 feat = 'pitch contour'
@@ -14,10 +15,11 @@ num_workers = 2
 shuffle = True
 epoch = 1000
 lr = 0.001
+model_name = 'Similarity1_aug5'
 
 # model saving path
 date = date.today()
-out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,'RNN_similarity')
+out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
 if not os.path.exists(out_model_fn):
     os.makedirs(out_model_fn)
 
