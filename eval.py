@@ -37,7 +37,7 @@ def evaluate_model(model, dataloader):
 
 band = 'middle'
 feat = 'pitch contour'
-midi_op = 'resize'
+midi_op = 'aligned'
 num_workers = 4
 
 # if resize the midi to fit the length of audio
@@ -45,16 +45,18 @@ resample = False
 if midi_op == 'resize':
     resample = True
 
-trPC, vaPC, SC = load_data(band, feat, 'resize')
+trPC, vaPC, SC = load_data(band, feat, midi_op)
 tePC = load_test_data(band, feat)
 
 kwargs = {'num_workers': num_workers, 'pin_memory': True}
-tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], resample), **kwargs)
-va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], resample), **kwargs)
-te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], resample), **kwargs)
+tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), **kwargs)
+va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), **kwargs)
+te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op), **kwargs)
 
-model_path = './model/20191010/Similarity1_aug5/model'
-model = Net().cuda()
+model_path = './model/20191015/Similarity1_aug5/model'
+model = Net()
+if torch.cuda.is_available():
+    model.cuda()
 model.load_state_dict(torch.load(model_path)['state_dict'])
 
 train_metrics = evaluate_model(model, tr_loader)

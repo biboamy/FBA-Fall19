@@ -2,12 +2,12 @@ import os, torch
 from datetime import date
 from model import Net
 from train_utils import Trainer
-from lib import load_data, Data2Torch, my_collate
+from lib import load_data, Data2Torch, my_collate, check_missing_alignedmidi
 os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
 band = 'middle'
 feat = 'pitch contour'
-midi_op = 'resize'
+midi_op = 'aligned' # 'sec', 'beat', 'resize', 'aligned'
 
 # training parameters
 batch_size = 16
@@ -16,6 +16,11 @@ shuffle = True
 epoch = 1000
 lr = 0.001
 model_name = 'Similarity1_aug5'
+
+print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
+print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
+
+#check_missing_alignedmidi(band, feat, midi_op)
 
 # model saving path
 date = date.today()
@@ -34,8 +39,8 @@ if midi_op == 'resize':
 # prepare dataloader (function inside lib.py)
 t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
 v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
-tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], resample), collate_fn=my_collate, **t_kwargs)
-va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], resample), collate_fn=my_collate, **t_kwargs)
+tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), collate_fn=my_collate, **t_kwargs)
+va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), collate_fn=my_collate, **t_kwargs)
 
 # build model (function inside model.py)
 model = Net()

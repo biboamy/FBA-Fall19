@@ -25,6 +25,27 @@ else:
     PATH_FBA_AUDIO = '/Users/caspia/Desktop/Github/FBA2013data/'
     PATH_FBA_MIDI = '/Users/caspia/Desktop/Github/FBA-Fall19/data/midi/'
 
+# convert .mat to dictionary
+import scipy.io
+for band in BAND:
+    aligned_midi = {}
+    mat = scipy.io.loadmat('../data/midi/aligned_{}.mat'.format(band))
+    alignment_band = mat['alignment_band']
+    ids_band = mat['ids_band']
+    for y in range(3):
+        year = y + 2013
+        aligned_midi[str(year)] = {}
+        k = {}
+        all_ids = ids_band[0, y].flatten()
+        all_alignment = alignment_band[0, y].flatten()
+        for i in np.arange(all_ids.shape[0]):
+            k[str(all_ids[i])] = all_alignment[i].flatten()
+        aligned_midi[str(year)] = k
+    with open('../data/midi/{}_2_midi_aligned_3.dill'.format(band), 'wb') as f:
+        dill.dump(aligned_midi, f)
+
+assert(False)
+
 # create midi data (piano roll)
 midi_score = {}
 unit = "resize"
