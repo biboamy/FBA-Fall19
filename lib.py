@@ -2,6 +2,7 @@ import numpy as np
 import torch, json
 import torch.nn as nn
 from torch.utils.data import Dataset
+import torch.nn.functional as F
 
 def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='sec'):
     # find missing alignedmidi
@@ -89,6 +90,7 @@ class Data2Torch(Dataset):
                 mXSC = np.pad(mXSC, ((0,0),(0,l_target-l_midi)), 'constant')
                 mXSC = np.argmax(mXSC, axis=0)
                 mXSC = torch.from_numpy(mXSC).float()
+
             else:
                 SC = np.argmax(SC, axis=0)
                 mXSC = torch.from_numpy(SC).float()
@@ -101,7 +103,7 @@ class Data2Torch(Dataset):
 
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[1] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
+        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
         
         return mXPC, mXSC, mY
     
@@ -110,24 +112,38 @@ class Data2Torch(Dataset):
 
 # padding each sequence in the batch to the same length
 def my_collate(batch):
- 
-    import random
-    num = 3
-  
-    for i, data in enumerate(batch):
-        pc = []
-        sc = []
-        for j in range(num):
-            start = round(random.uniform(0, 1400))
-            pc.append(data[0][start:start+1000].view(1,1000))
-            sc.append(data[1][start:start+1000].view(1,1000))
-  
-        data = (torch.cat(pc,0), \
-                torch.cat(sc,0), \
-                data[2].repeat(num))
-        
-        batch[i] = data
 
+    def padding(batch):
+        max_length = 0
+        for i, data in enumerate(batch):
+            max_tmp = max(len(data[0]),len(data[1]))
+            max_length = max(max_length, max_tmp)
+        for i, data in enumerate(batch):
+            PC, SC = data[0], data[1]
+            PC = F.pad(PC, (0, max_length-len(PC)), "constant", 0)
+            SC = F.pad(SC, (0, max_length-len(SC)), "constant", 0)
+            batch[i] = (PC, SC, data[2])
+        return batch        
+
+    def random_chunk(batch):
+        import random
+        num = 3
+
+        for i, data in enumerate(batch):
+            pc, sc = [], []
+            for j in range(num):
+                start = round(random.uniform(0, 1400))
+                pc.append(data[0][start:start+1000].view(1,1000))
+                sc.append(data[1][start:start+1000].view(1,1000))
+
+            batch[i] = (torch.cat(pc,0), \
+                        torch.cat(sc,0), \
+                        data[2].repeat(num))
+        return batch
+    
+    batch = padding(batch)
+    #batch = random_chunk(batch)
+        
     return torch.utils.data.dataloader.default_collate(batch)
 
 # loss function, calculate the distane between two latent as the rating

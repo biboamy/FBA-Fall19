@@ -37,12 +37,13 @@ def evaluate_model(model, dataloader):
 
 band = 'middle'
 feat = 'pitch contour'
-midi_op = 'aligned'
+midi_op = 'resize' # 'sec', 'beat', 'resize', 'aligned'
 num_workers = 4
+model_name = 'Similarity_batch16_lr0.001_midiResize_chunk3sample10sec_CNN'
 
 # if resize the midi to fit the length of audio
 resample = False
-if midi_op == 'resize':
+if midi_op == 'resize': 
     resample = True
 
 trPC, vaPC, SC = load_data(band, feat, midi_op)
@@ -53,7 +54,7 @@ tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), **kwarg
 va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), **kwargs)
 te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op), **kwargs)
 
-model_path = './model/20191015/Similarity1_aug5/model'
+model_path = './model/20191017/'+model_name+'/model'
 model = Net()
 if torch.cuda.is_available():
     model.cuda()

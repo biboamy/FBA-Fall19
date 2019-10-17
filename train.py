@@ -15,7 +15,7 @@ num_workers = 2
 shuffle = True
 epoch = 1000
 lr = 0.001
-model_name = 'Similarity1_aug5'
+model_name = 'Similarity_batch16_lr0.001_midiAligned_padding_CNN'
 
 print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
 print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
@@ -50,3 +50,5 @@ if torch.cuda.is_available():
 # start training (function inside train_utils.py)
 Trer = Trainer(model, lr, epoch, out_model_fn)
 Trer.fit(tr_loader, va_loader)
+
+print(model_name)
