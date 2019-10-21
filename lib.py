@@ -61,18 +61,25 @@ class Data2Torch(Dataset):
     def __init__(self, data, midi_op = 'aligned'):
         self.xPC = data[0]
         self.xSC = data[1]
+        self.align = {}
         self.midi_op = midi_op
         self.resample = False
         if midi_op == 'resize':
             self.resample = True
 
+        if midi_op == 'aligned' or midi_op == 'aligned_s':
+            self.xSC = data[1]['scores']
+            self.align = data[1]['alignment']
+
     def __getitem__(self, index):
+
+        align = [] # empty except midi_op = 'aligned'
 
         # pitch contour
         PC = self.xPC[index]['pitch_contour']
         mXPC = torch.from_numpy(PC).float()
 
-        if self.midi_op != 'aligned':
+        if self.midi_op != 'aligned' and self.midi_op != 'aligned_s':
             # musical score
             year = self.xPC[index]['year']
             instrument = self.xPC[index]['instrumemt']
@@ -93,17 +100,27 @@ class Data2Torch(Dataset):
                 SC = np.argmax(SC, axis=0)
                 mXSC = torch.from_numpy(SC).float()
 
-        else: # midi_op == 'aligned'
+        elif self.midi_op == 'aligned':
             year = self.xPC[index]['year']
             id = self.xPC[index]['student_id']
             mXSC = self.xSC[year][str(id)]
             mXSC = torch.from_numpy(mXSC).float()
 
+        else: # midi_op == 'aligned_s'
+            year = self.xPC[index]['year']
+            instrument = self.xPC[index]['instrumemt']
+            id = self.xPC[index]['student_id']
+            SC =  self.xSC[instrument][year]
+            SC = np.argmax(SC, axis=0)
+            mXSC = torch.from_numpy(SC).float()
+
+            align = self.align[year][str(id)]
+
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[1] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
-        
-        return mXPC, mXSC, mY
+        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
+
+        return mXPC, mXSC, mY, align
     
     def __len__(self):
         return len(self.xPC)
@@ -113,19 +130,29 @@ def my_collate(batch):
  
     import random
     num = 3
-  
+
+    import matplotlib.pyplot as plt
+
     for i, data in enumerate(batch):
         pc = []
         sc = []
         for j in range(num):
             start = round(random.uniform(0, 1400))
             pc.append(data[0][start:start+1000].view(1,1000))
-            sc.append(data[1][start:start+1000].view(1,1000))
+            idx = np.arange(np.floor(data[3][start]), np.floor(data[3][start+1000]))
+            idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+            tmpsc = data[1][idx]
+            xval = np.linspace(0, idx.shape[0]-1, num=1000)
+            x = np.arange(idx.shape[0])
+            sc_interp = np.interp(xval, x, tmpsc)
+
+            sc.append(torch.Tensor(sc_interp).view(1,-1))
   
         data = (torch.cat(pc,0), \
                 torch.cat(sc,0), \
                 data[2].repeat(num))
-        
+
         batch[i] = data
 
     return torch.utils.data.dataloader.default_collate(batch)

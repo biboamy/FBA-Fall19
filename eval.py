@@ -37,7 +37,7 @@ def evaluate_model(model, dataloader):
 
 band = 'middle'
 feat = 'pitch contour'
-midi_op = 'aligned'
+midi_op = 'aligned_s'
 num_workers = 4
 
 # if resize the midi to fit the length of audio
@@ -53,7 +53,7 @@ tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), **kwarg
 va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), **kwargs)
 te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op), **kwargs)
 
-model_path = './model/20191015/Similarity1_aug5/model'
+model_path = './model/20191021/Similarity_align_stretch/model'
 model = Net()
 if torch.cuda.is_available():
     model.cuda()
