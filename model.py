@@ -130,6 +130,10 @@ class PCConvNet(nn.Module):
                 #nn.Dropout()
             )
 
+            self.hidden_size = 16
+            self.n_layers = 1
+            self.lstm = nn.GRU(self.n2_features, self.hidden_size, self.n_layers, batch_first=True)
+
     def forward(self, input):
         """
         Defines the forward pass of the PitchContourAssessor module
@@ -146,7 +150,12 @@ class PCConvNet(nn.Module):
         # compute the forward pass through the convolutional layer
         conv_out = self.conv(input)
         # compute final output
-        final_output = torch.mean(conv_out, 2)
+        #final_output = torch.mean(conv_out, 2)
+     
+        lstm_out, self.hidden = self.lstm(conv_out.transpose(1, 2))
+        mini_batch_size, lstm_seq_len, num_features = lstm_out.size()
+        final_output  = torch.mean(lstm_out, 1)
+        #final_output = lstm_out[:, lstm_seq_len - 1, :]
         
         return final_output
 

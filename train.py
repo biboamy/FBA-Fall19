@@ -7,7 +7,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
 band = 'middle'
 feat = 'pitch contour'
-midi_op = 'aligned' # 'sec', 'beat', 'resize', 'aligned'
+midi_op = 'resize' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
 
 # training parameters
 batch_size = 16
@@ -15,7 +15,7 @@ num_workers = 2
 shuffle = True
 epoch = 1000
 lr = 0.001
-model_name = 'Similarity_batch16_lr0.001_midiAligned_padding_CNN'
+model_name = 'Similarity_batch16_lr0.001_midiResize_windowChunk3sample10sec_CRNN'
 
 print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
 print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))

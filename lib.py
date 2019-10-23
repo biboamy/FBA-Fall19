@@ -72,8 +72,9 @@ class Data2Torch(Dataset):
         # pitch contour
         PC = self.xPC[index]['pitch_contour']
         mXPC = torch.from_numpy(PC).float()
+        align = None
 
-        if self.midi_op != 'aligned':
+        if self.midi_op in ['sec', 'beat', 'resize']:
             # musical score
             year = self.xPC[index]['year']
             instrument = self.xPC[index]['instrumemt']
@@ -95,11 +96,21 @@ class Data2Torch(Dataset):
                 SC = np.argmax(SC, axis=0)
                 mXSC = torch.from_numpy(SC).float()
 
-        else: # midi_op == 'aligned'
+        elif self.midi_op == 'aligned':
             year = self.xPC[index]['year']
             id = self.xPC[index]['student_id']
             mXSC = self.xSC[year][str(id)]
             mXSC = torch.from_numpy(mXSC).float()
+
+        elif self.midi_op == 'aligned_s':
+            year = self.xPC[index]['year']
+            instrument = self.xPC[index]['instrumemt']
+            id = self.xPC[index]['student_id']
+            SC =  self.xSC[instrument][year]
+            SC = np.argmax(SC, axis=0)
+            mXSC = torch.from_numpy(SC).float()
+
+            align = self.align[year][str(id)]
 
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
@@ -134,15 +145,42 @@ def my_collate(batch):
             for j in range(num):
                 start = round(random.uniform(0, 1400))
                 pc.append(data[0][start:start+1000].view(1,1000))
+
                 sc.append(data[1][start:start+1000].view(1,1000))
 
             batch[i] = (torch.cat(pc,0), \
                         torch.cat(sc,0), \
                         data[2].repeat(num))
         return batch
+
+    def window_chunk(batch):
+        import random
+        num = 3
+
+        pc, sc, y = [], [], []
+        for i, data in enumerate(batch):
+            size = int(len(data[0])/2000)
+            for j in range(size):
+                pc.append(data[0][j*2000:j*2000+2000].view(1,2000))
+                sc.append(data[1][j*2000:j*2000+2000].view(1,2000))
+                y.append(data[2].view(1,1))
+
+        c = list(zip(pc, sc, y))
+        random.shuffle(c)
+        pc, sc, y = zip(*c)
+        pc = torch.cat(pc,0)
+        sc = torch.cat(sc,0)
+        y = torch.cat(y,0).squeeze()
+  
+        for i, data in enumerate(batch):
+            batch[i] = (pc[i*3:i*3+3], \
+                        sc[i*3:i*3+3], \
+                        y[i*3:i*3+3])
+        return batch
     
-    batch = padding(batch)
-    #batch = random_chunk(batch)
+    #batch = padding(batch)
+    batch = random_chunk(batch)
+    #batch = window_chunk(batch)
         
     return torch.utils.data.dataloader.default_collate(batch)
 
