@@ -92,7 +92,7 @@ class PCConvNet(nn.Module):
      pitch contours as input
     """
 
-    def __init__(self, mode=0):
+    def __init__(self, model_choose, mode=0):
         """
         Initializes the class with internal parameters for the different layers
         Args:
@@ -129,6 +129,11 @@ class PCConvNet(nn.Module):
                 nn.ReLU(),
                 #nn.Dropout()
             )
+            self.model_choose = model_choose
+            self.hidden_size = 16
+            self.n_layers = 1
+            if self.model_choose == 'CRNN':
+                self.lstm = nn.GRU(self.n2_features, self.hidden_size, self.n_layers, batch_first=True)
 
     def forward(self, input):
         """
@@ -146,15 +151,22 @@ class PCConvNet(nn.Module):
         # compute the forward pass through the convolutional layer
         conv_out = self.conv(input)
         # compute final output
-        final_output = torch.mean(conv_out, 2)
+        if self.model_choose == 'CNN':
+            final_output = torch.mean(conv_out, 2)
+        elif self.model_choose == 'CRNN':
+            lstm_out, self.hidden = self.lstm(conv_out.transpose(1, 2))
+            mini_batch_size, lstm_seq_len, num_features = lstm_out.size()
+            final_output  = torch.mean(lstm_out, 1)
+        else:
+            raise ValueError('Please input the correct model')
         
         return final_output
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, model_choose):
         super(Net, self).__init__()
-        self.PCmodel = PCConvNet()
-        self.SCmodel = PCConvNet()
+        self.PCmodel = PCConvNet(model_choose)
+        self.SCmodel = PCConvNet(model_choose)
 
     def forward(self, pitch, score):
         pitch_v = self.PCmodel(pitch)
