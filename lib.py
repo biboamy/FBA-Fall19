@@ -62,7 +62,6 @@ class Data2Torch(Dataset):
     def __init__(self, data, midi_op = 'aligned'):
         self.xPC = data[0]
         self.xSC = data[1]
-        self.align = {}
         self.midi_op = midi_op
         self.resample = False
         if midi_op == 'resize':
@@ -74,12 +73,12 @@ class Data2Torch(Dataset):
 
     def __getitem__(self, index):
 
-        align = [] # empty except midi_op = 'aligned'
-
         # pitch contour
         PC = self.xPC[index]['pitch_contour']
         mXPC = torch.from_numpy(PC).float()
-        align = None
+        # ratings
+        mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
+        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)     
 
         if self.midi_op in ['sec', 'beat', 'resize']:
             # musical score
@@ -102,12 +101,14 @@ class Data2Torch(Dataset):
             else:
                 SC = np.argmax(SC, axis=0)
                 mXSC = torch.from_numpy(SC).float()
+            oup = [mXPC, mXSC, mY]
 
         elif self.midi_op == 'aligned':
             year = self.xPC[index]['year']
             id = self.xPC[index]['student_id']
             mXSC = self.xSC[year][str(id)]
             mXSC = torch.from_numpy(mXSC).float()
+            oup = [mXPC, mXSC, mY]
 
         elif self.midi_op == 'aligned_s':
             year = self.xPC[index]['year']
@@ -116,23 +117,21 @@ class Data2Torch(Dataset):
             SC =  self.xSC[instrument][year]
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
-
             align = self.align[year][str(id)]
+            oup = [mXPC, mXSC, mY, align]
 
         else:
             raise ValueError('Please input the correct model')
 
-        # ratings
-        mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
-        
         return mXPC, mXSC, mY, align
-
+    
     def __len__(self):
         return len(self.xPC)
 
 # padding each sequence in the batch to the same length
 def my_collate(batch):
+
+    c_size = 2000
 
     def padding(batch):
         max_length = 0
@@ -154,95 +153,137 @@ def my_collate(batch):
             pc, sc = [], []
             for j in range(num):
                 start = round(random.uniform(0, 1400))
-                pc.append(data[0][start:start+1000].view(1,1000))
+                pc.append(data[0][start:start+c_size].view(1,c_size))
 
-                if data[3]:
-                    idx = np.arange(np.floor(data[3][start]), np.floor(data[3][start+1000]))
+                if len(data)>3:
+                    idx = np.arange(np.floor(data[3][start]), np.floor(data[3][start+c_size]))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]
-                    xval = np.linspace(0, idx.shape[0]-1, num=1000)
+                    xval = np.linspace(0, idx.shape[0]-1, num=c_size)
                     x = np.arange(idx.shape[0])
                     sc_interp = np.interp(xval, x, tmpsc)
 
                     sc.append(torch.Tensor(sc_interp).view(1,-1))
                 else:
-                    sc.append(data[1][start:start+1000].view(1,1000))
+                    sc.append(data[1][start:start+c_size].view(1,c_size))
 
-            batch[i] = (torch.cat(pc,0), \
-                        torch.cat(sc,0), \
-                        data[2].repeat(num))
+            if len(data)==4:
+                batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num), data[3])
+            if len(data)==3:
+                batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num))
+
         return batch
 
     def window_chunk(batch):
         import random
-        num = 3
+        num = 1
 
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
-            size = int(len(data[0])/2000)
+            size = int((len(data[0])-1)/c_size)
             for j in range(size):
-                pc.append(data[0][j*2000:j*2000+2000].view(1,2000))
-                sc.append(data[1][j*2000:j*2000+2000].view(1,2000))
-                y.append(data[2].view(1,1))
+                pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
+                if len(data)>3:
+                    idx = np.arange(np.floor(data[3][j*c_size]), np.floor(data[3][j*c_size+c_size]))
+                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
+                    tmpsc = data[1][idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=c_size)
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
+
+                    sc.append(torch.Tensor(sc_interp).view(1,-1))
+                else:
+                    sc.append(data[1][j*j*c_size:j*j*c_size+j*c_size].view(1,j*c_size))
+                y.append(data[2].view(1,1))
         c = list(zip(pc, sc, y))
         random.shuffle(c)
         pc, sc, y = zip(*c)
         pc = torch.cat(pc,0)
         sc = torch.cat(sc,0)
         y = torch.cat(y,0).squeeze()
-  
+
         for i, data in enumerate(batch):
-            batch[i] = (pc[i*3:i*3+3], \
-                        sc[i*3:i*3+3], \
-                        y[i*3:i*3+3])
+            if len(data)==4:
+                batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num], data[3][i])
+            if len(data)==3:
+                batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num])
         return batch
     
     #batch = padding(batch)
-    batch = random_chunk(batch)
-    #batch = window_chunk(batch)
+    #batch = random_chunk(batch)
+    batch = window_chunk(batch)
         
     return torch.utils.data.dataloader.default_collate(batch)
 
 def test_collate(batch):
+    c_size = 1000
 
     def non_overlap(batch):
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
-            size = int(len(data[0])/1000)
+            size = int((len(data[0])-1)/c_size)
             for j in range(size):
-                pc.append(data[0][j*1000:j*1000+1000].view(1,1000))
-                sc.append(data[1][j*1000:j*1000+1000].view(1,1000))
+                pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
+                if len(data)>3:
+                    idx = np.arange(np.floor(data[3][j*c_size]), np.floor(data[3][j*c_size+c_size]))
+                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                    tmpsc = data[1][idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=c_size)
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
+                    sc.append(torch.Tensor(sc_interp).view(1,-1))
+                else:
+                    sc.append(data[1][j*c_size:j*c_size+c_size].view(1,c_size))
                 y.append(data[2].view(1,1))
-            pc.append(data[0][-1000:].view(1,1000))
-            sc.append(data[1][-1000:].view(1,1000))
+
+            pc.append(data[0][-c_size:].view(1,c_size))
+            if len(data)>3:
+                idx = np.arange(np.floor(data[3][len(data[0])-c_size-2]), np.floor(data[3][len(data[0])-2]))
+                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                tmpsc = data[1][idx]
+                xval = np.linspace(0, idx.shape[0]-1, num=c_size)
+                x = np.arange(idx.shape[0])
+                sc_interp = np.interp(xval, x, tmpsc)
+                sc.append(torch.Tensor(sc_interp).view(1,-1))
+            else:
+                sc.append(data[1][-c_size:].view(1,c_size))
             y.append(data[2].view(1,1))
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
-            batch[i] = (pc, sc, y)
+            if len(data)==4:
+                batch[i] = (pc, sc, y, data[3][i])
+            if len(data)==3:
+                batch[i] = (pc, sc, y)
         return batch
 
     def overlap(batch, hopSize):
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
             j = 0
-            while (j+1000) < len(data[0]):
-                pc.append(data[0][j:j+1000].view(1,1000))
-                sc.append(data[1][j:j+1000].view(1,1000))
+            while (j+c_size) < len(data[0]):
+                pc.append(data[0][j:j+c_size].view(1,c_size))
+                sc.append(data[1][j:j+c_size].view(1,c_size))
                 y.append(data[2].view(1,1))
                 j+=hopSize
-            pc.append(data[0][-1000:].view(1,1000))
-            sc.append(data[1][-1000:].view(1,1000))
+            pc.append(data[0][-c_size:].view(1,c_size))
+            sc.append(data[1][-c_size:].view(1,c_size))
             y.append(data[2].view(1,1))
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
-            batch[i] = (pc, sc, y)
+            if len(data)==4:
+                batch[i] = (pc, sc, y, data[3][i])
+            if len(data==3):
+                batch[i] = (pc, sc, y)
         return batch
 
-    batch=overlap(batch, 500)
+    #batch=overlap(batch, 500)
+    batch = non_overlap(batch)
     return torch.utils.data.dataloader.default_collate(batch)
 
 # loss function, calculate the distane between two latent as the rating
