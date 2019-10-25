@@ -7,6 +7,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
 band = 'middle'
 feat = 'pitch contour'
+
 midi_op = 'resize' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
 model_choose = 'CRNN'
 

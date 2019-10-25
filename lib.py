@@ -62,6 +62,7 @@ class Data2Torch(Dataset):
     def __init__(self, data, midi_op = 'aligned'):
         self.xPC = data[0]
         self.xSC = data[1]
+        self.align = {}
         self.midi_op = midi_op
         self.resample = False
         if midi_op == 'resize':
@@ -72,6 +73,8 @@ class Data2Torch(Dataset):
             self.align = data[1]['alignment']
 
     def __getitem__(self, index):
+
+        align = [] # empty except midi_op = 'aligned'
 
         # pitch contour
         PC = self.xPC[index]['pitch_contour']
@@ -123,8 +126,8 @@ class Data2Torch(Dataset):
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
         mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
         
-        return mXPC, mXSC, mY#, align
-    
+        return mXPC, mXSC, mY, align
+
     def __len__(self):
         return len(self.xPC)
 
