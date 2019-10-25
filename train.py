@@ -8,6 +8,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 band = 'middle'
 feat = 'pitch contour'
 midi_op = 'resize' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
+model_choose = 'CRNN'
 
 # training parameters
 batch_size = 16
@@ -15,7 +16,8 @@ num_workers = 2
 shuffle = True
 epoch = 1000
 lr = 0.001
-model_name = 'Similarity_batch16_lr0.001_midiResize_windowChunk3sample10sec_CRNN'
+
+model_name = 'Similarity_batch16_lr0.001_midiResize_windowChunk3sample5sec_CRNNLast'
 
 print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
 print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
@@ -43,7 +45,7 @@ tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), collate
 va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), collate_fn=my_collate, **t_kwargs)
 
 # build model (function inside model.py)
-model = Net()
+model = Net(model_choose)
 if torch.cuda.is_available():
     model.cuda()
 

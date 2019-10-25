@@ -6,6 +6,9 @@ from tensorboard_logger import configure, log_value
 
 class Trainer:
     def __init__(self, model, lr, epoch, save_fn):
+        """
+        Class for implementing an trainer
+        """
         self.epoch = epoch
         self.model = model
         self.lr = lr
