@@ -106,4 +106,6 @@ if __name__ == "__main__":
     model_choose = args.model_choose
     chunk_size = args.chunk_size
 
+    print(model_name, midi_op, overlap_flag, model_choose, chunk_size)
+
     main()
