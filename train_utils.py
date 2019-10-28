@@ -24,7 +24,8 @@ class Trainer:
         current = datetime.datetime.now()
 
         # configure tensor-board logger
-        configure('runs/' + file_info + current.strftime("%H:%M"), flush_secs=2)
+        # e.g. model_name_10:28:01:54
+        configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader):
         st = time.time()

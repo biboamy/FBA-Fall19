@@ -25,7 +25,6 @@ def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='sec'
 
     return missing_list
 
-
 def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
@@ -123,15 +122,17 @@ class Data2Torch(Dataset):
         else:
             raise ValueError('Please input the correct model')
 
-        return mXPC, mXSC, mY, align
+        return oup
     
     def __len__(self):
         return len(self.xPC)
 
 # padding each sequence in the batch to the same length
-def my_collate(batch):
+def my_collate(collate_params, batch):
 
-    c_size = 2000
+    process_collate, sample_num, chunk_size = collate_params
+
+    c_size = chunk_size
 
     def padding(batch):
         max_length = 0
@@ -147,12 +148,12 @@ def my_collate(batch):
 
     def random_chunk(batch):
         import random
-        num = 3
+        num = sample_num
 
         for i, data in enumerate(batch):
             pc, sc = [], []
             for j in range(num):
-                start = round(random.uniform(0, 1400))
+                start = round(random.uniform(0, len(data[0])-c_size-10)) # -10: possible dismatch in size between pc & alignment
                 pc.append(data[0][start:start+c_size].view(1,c_size))
 
                 if len(data)>3:
@@ -168,20 +169,17 @@ def my_collate(batch):
                 else:
                     sc.append(data[1][start:start+c_size].view(1,c_size))
 
-            if len(data)==4:
-                batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num), data[3])
-            if len(data)==3:
                 batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num))
 
         return batch
 
     def window_chunk(batch):
         import random
-        num = 1
+        num = sample_num
 
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
-            size = int((len(data[0])-1)/c_size)
+            size = int((len(data[0])-10)/c_size) # -10: possible dismatch in size between pc & alignment
             for j in range(size):
                 pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
                 if len(data)>3:
@@ -205,25 +203,30 @@ def my_collate(batch):
         y = torch.cat(y,0).squeeze()
 
         for i, data in enumerate(batch):
-            if len(data)==4:
-                batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num], data[3][i])
-            if len(data)==3:
-                batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num])
+            batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num])
+
         return batch
-    
-    #batch = padding(batch)
-    #batch = random_chunk(batch)
-    batch = window_chunk(batch)
+
+    if process_collate == 'padding':
+        batch = window_chunk(batch)
+    elif process_collate == 'randomChunk':
+        batch = random_chunk(batch)
+    else:
+        assert (process_collate == 'windowChunk')
+        batch = window_chunk(batch)
         
     return torch.utils.data.dataloader.default_collate(batch)
 
-def test_collate(batch):
-    c_size = 1000
+def test_collate(collate_params, batch):
+
+    overlap_flag, chunk_size = collate_params
+
+    c_size = chunk_size
 
     def non_overlap(batch):
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
-            size = int((len(data[0])-1)/c_size)
+            size = int((len(data[0])-10)/c_size) # -10: possible dismatch in size between pc & alignment
             for j in range(size):
                 pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
                 if len(data)>3:
@@ -252,38 +255,61 @@ def test_collate(batch):
             else:
                 sc.append(data[1][-c_size:].view(1,c_size))
             y.append(data[2].view(1,1))
+
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
-            if len(data)==4:
-                batch[i] = (pc, sc, y, data[3][i])
-            if len(data)==3:
-                batch[i] = (pc, sc, y)
+            batch[i] = (pc, sc, y)
+
         return batch
 
     def overlap(batch, hopSize):
         pc, sc, y = [], [], []
         for i, data in enumerate(batch):
             j = 0
-            while (j+c_size) < len(data[0]):
+            while (j+c_size) < len(data[0]-10): # -10: possible dismatch in size between pc & alignment
                 pc.append(data[0][j:j+c_size].view(1,c_size))
-                sc.append(data[1][j:j+c_size].view(1,c_size))
+                if len(data)>3:
+                    idx = np.arange(np.floor(data[3][j]), np.floor(data[3][j+c_size]))
+                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                    tmpsc = data[1][idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=c_size)
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
+                    sc.append(torch.Tensor(sc_interp).view(1,-1))
+                else:
+                    sc.append(data[1][j:j+c_size].view(1,c_size))
+
                 y.append(data[2].view(1,1))
                 j+=hopSize
+
             pc.append(data[0][-c_size:].view(1,c_size))
-            sc.append(data[1][-c_size:].view(1,c_size))
+            if len(data) > 3:
+                idx = np.arange(np.floor(data[3][len(data[0]) - c_size - 2]), np.floor(data[3][len(data[0]) - 2]))
+                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                tmpsc = data[1][idx]
+                xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+                x = np.arange(idx.shape[0])
+                sc_interp = np.interp(xval, x, tmpsc)
+                sc.append(torch.Tensor(sc_interp).view(1, -1))
+            else:
+                sc.append(data[1][-c_size:].view(1, c_size))
             y.append(data[2].view(1,1))
+
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
-            if len(data)==4:
-                batch[i] = (pc, sc, y, data[3][i])
-            if len(data==3):
-                batch[i] = (pc, sc, y)
+            batch[i] = (pc, sc, y)
+
         return batch
 
-    #batch=overlap(batch, 500)
-    batch = non_overlap(batch)
+    if overlap_flag:
+        batch=overlap(batch, 500)
+    else:
+        batch = non_overlap(batch)
+
     return torch.utils.data.dataloader.default_collate(batch)
 
 # loss function, calculate the distane between two latent as the rating
