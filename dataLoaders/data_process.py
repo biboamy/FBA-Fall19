@@ -43,7 +43,7 @@ for band in BAND:
         aligned_midi[str(year)] = k
     with open('../data/midi/{}_2_midi_aligned_3.dill'.format(band), 'wb') as f:
         dill.dump(aligned_midi, f)
-'''
+
 # convert .mat to dictionary
 import scipy.io
 for band in BAND:
@@ -73,10 +73,10 @@ for band in BAND:
 
 
 assert(False)
-
+'''
 # create midi data (piano roll)
 midi_score = {}
-unit = "resize"
+unit = "res12"
 for band in BAND:
     midi_score = {}
     for instrument in INSTRUMENT:
@@ -88,6 +88,9 @@ for band in BAND:
                 midi_score[instrument][year] = pm.get_piano_roll()
             elif unit == "beat":
                 pm = pypianoroll.Multitrack(PATH_FBA_MIDI + midi_file_name)
+                midi_score[instrument][year] = pm.tracks[0].pianoroll.T
+            elif unit == "res12":
+                pm = pypianoroll.Multitrack(PATH_FBA_MIDI + midi_file_name, beat_resolution=12)
                 midi_score[instrument][year] = pm.tracks[0].pianoroll.T
             elif unit == "resize":
                 pm = pretty_midi.PrettyMIDI(PATH_FBA_MIDI + midi_file_name)

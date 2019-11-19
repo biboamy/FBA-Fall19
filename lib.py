@@ -32,14 +32,14 @@ def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     assert(feat=='pitch contour')
 
     # Read features from .dill files
-    pc_file = '../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
+    pc_file = '../../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # train
     trPC = np.array(dill.load(open(pc_file + 'train.dill', 'rb')))
     # valid
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
+    mid_file = '../../../data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
     SC = dill.load(open(mid_file, 'rb')) # all scores / aligned midi
 
     return trPC, vaPC, SC
@@ -51,7 +51,7 @@ def load_test_data(band='middle', feat='pitch contour'):
     assert(feat=='pitch contour')
 
     # Read features from .dill files
-    pc_file = '../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
+    pc_file = '../../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # test
     tePC = np.array(dill.load(open(pc_file + 'test.dill', 'rb')))
 
@@ -193,7 +193,7 @@ def my_collate(collate_params, batch):
 
                     sc.append(torch.Tensor(sc_interp).view(1,-1))
                 else:
-                    sc.append(data[1][j*j*c_size:j*j*c_size+j*c_size].view(1,j*c_size))
+                    sc.append(data[1][j*c_size:j*c_size+c_size].view(1,j*c_size))
                 y.append(data[2].view(1,1))
         c = list(zip(pc, sc, y))
         random.shuffle(c)
