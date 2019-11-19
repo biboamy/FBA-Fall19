@@ -3,4 +3,7 @@ data/
 .idea/
 */__pycache__/
 __pycache__/
-model/
+*/model/
+local/
+*/runs/
+
