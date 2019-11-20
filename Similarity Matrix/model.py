@@ -110,14 +110,13 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
             nn.Conv2d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
             nn.ReLU(),
             # nn.Dropout()
-            nn.Conv2d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
-            nn.ReLU(),
-            # nn.Dropout()
         )
 
         self.classifier = nn.Sequential(
             nn.Linear(64, 1024), # first dim need to be determined
+            nn.ReLU(),
             nn.Linear(1024, 1024),
+            nn.ReLU(),
             nn.Linear(1024, 1)
         )
 
@@ -135,6 +134,7 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
         #oup = oup.flatten()
         oup = oup.view(-1, 64)
         oup = self.classifier(oup)
+        oup = F.sigmoid(oup)
 
         return oup
 
