@@ -21,7 +21,7 @@ class Trainer:
 
         # configure tensor-board logger
         # e.g. model_name
-        configure('runs/' + save_fn.split('/')[-1], flush_secs=2)
+        configure('runs/' + save_fn.split('/')[3], flush_secs=2)
 
     def fit(self, tr_loader, va_loader, device):
         st = time.time()
@@ -40,23 +40,26 @@ class Trainer:
 
             # optimizer
             opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
-            self.model.zero_grad()  
+            #self.model.zero_grad()
 
-            loss_train = None
+            loss_train = 0
             # Training
             for batch_idx, _input in enumerate(tr_loader):
+                self.model.zero_grad()
                 matrix, target = Variable(_input[0].to(device)), Variable(_input[1].to(device))
 
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
                 
                 #calculate loss
-                if loss_train:
-                    loss_train += loss_func(pred, target)
-                else:
-                    loss_train = loss_func(pred, target)
-            loss_train.backward()
-            opt.step()
+                loss = loss_func(pred, target)
+                loss.backward()
+                opt.step()
+
+                loss_train += loss.item()
+                #print(loss_train)
+                #input()
+
 
             # Validate
             loss_val = 0
@@ -67,7 +70,7 @@ class Trainer:
                 pred = self.model(matrix.unsqueeze(1))
                 
                 #calculate loss
-                loss_val += loss_func(pred, target)
+                loss_val += loss_func(pred, target).item()
                     
             # print model result
             sys.stdout.write('\r')
