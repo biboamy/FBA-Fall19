@@ -30,15 +30,15 @@ def createMatrixDill(PC, saveDill):
         idx = id2idx[year][student_id]
         st, ed, dim = data['sc_idx'][idx]
         matrix = data['matrix'][int(st):int(ed), :int(dim)]
-        matrix = transform.resize(matrix, (600, 600))
+        matrix = transform.resize(matrix, (900, 900))
         mtx['matrix'] = matrix
         data_dill.append(mtx)
 
     with open(saveDill, 'wb') as f:
         dill.dump(data_dill, f)
 
-createMatrixDill(trPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_train.dill')
-createMatrixDill(vaPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_valid.dill')
-createMatrixDill(tePC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_test.dill')
+createMatrixDill(trPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_train900.dill')
+createMatrixDill(vaPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_valid900.dill')
+createMatrixDill(tePC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_test900.dill')
 
 data.close()

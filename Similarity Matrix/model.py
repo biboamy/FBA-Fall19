@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from config import *
 
 class ConvNet(nn.Module):
     """
@@ -88,8 +89,8 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
         self.kernel_size = 3
         self.stride = 3
         self.n0_features = 4
-        self.n1_features = 8
-        self.n2_features = 16
+        self.n1_features = 4
+        self.n2_features = 4
         # define the different convolutional modules
         self.conv = nn.Sequential(
             # define the 1st convolutional layer
@@ -109,15 +110,16 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
             # define the final fully connected layer (fully convolutional)
             nn.Conv2d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
             nn.ReLU(),
-            # nn.Dropout()
+            #nn.Dropout()
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(784, 1024), # first dim need to be determined
+            nn.Linear(196, 128), # first dim need to be determined
             nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 1)
+            nn.Dropout(),
+            #nn.Linear(1024, 1024),
+            #nn.ReLU(),
+            nn.Linear(128, 1)
         )
 
     def forward(self, input):
@@ -130,9 +132,11 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
                         seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
         """
         # get mini batch size from input and reshape
+        mini_batch_size, dim1, dim2, dim3 = input.shape
+        # print(input.shape)
         oup = self.conv(input)
         #oup = oup.flatten()
-        oup = oup.view(-1, 784)
+        oup = oup.view(mini_batch_size, -1)
         oup = self.classifier(oup)
         oup = torch.sigmoid(oup)
 

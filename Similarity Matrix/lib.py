@@ -5,15 +5,16 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 import h5py
 import dill
+from config import *
 
 def load_data(matrix_path, band='middle'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
 
     # train
-    trPC = dill.load(open(matrix_path + 'matrix_fixed_train.dill', 'rb'))
+    trPC = dill.load(open(matrix_path + 'matrix_fixed_train{}.dill'.format(matrix_dim), 'rb'))
     # valid
-    vaPC = dill.load(open(matrix_path + 'matrix_fixed_valid.dill', 'rb'))
+    vaPC = dill.load(open(matrix_path + 'matrix_fixed_valid{}.dill'.format(matrix_dim), 'rb'))
 
     return trPC, vaPC
 
@@ -22,7 +23,7 @@ def load_test_data(matrix_path, band='middle'):
     # Currently only allow pitch contour as feature
 
     # Read features from .dill files
-    tePC = dill.load(open(matrix_path + 'matrix_fixed_test.dill', 'rb'))
+    tePC = dill.load(open(matrix_path + 'matrix_fixed_test{}.dill'.format(matrix_dim), 'rb'))
 
     return tePC
 

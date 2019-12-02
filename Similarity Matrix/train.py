@@ -2,19 +2,11 @@ import os, torch
 from model import Net, Net_Fixed
 from train_utils import Trainer
 from lib import load_data, Data2Torch
+from config import *
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
-# training parameters
-batch_size = 16
-num_workers = 1 # fixed
-shuffle = True # fixed
-epoch = 1000 # fixed
-lr = 0.01
-model_choose = 'ConvNet_Fixed'
-
 def main():
-
-    model_name = '{}_batch{}_lr{}'.format(model_choose, batch_size, lr)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

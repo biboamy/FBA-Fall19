@@ -20,8 +20,12 @@ class Trainer:
         file_info = 'tensorlog'
 
         # configure tensor-board logger
-        # e.g. model_name
-        configure('runs/' + save_fn.split('/')[3], flush_secs=2)
+        import datetime
+
+        current = datetime.datetime.now()
+
+        # configure tensor-board logger
+        configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader, device):
         st = time.time()
@@ -31,16 +35,18 @@ class Trainer:
         save_dict['tr_loss'] = []
         best_loss = 1000000000
 
+        opt = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=1e-3)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, 0.5, last_epoch=-1)
+
         for e in range(1, self.epoch+1):
-            #learning rate (learning rate decay during training process)
-            lr = self.lr / (((e//(70*1))*2)+1) 
+
             loss_total = 0
             self.model.train()
-            print( '\n==> Training Epoch #%d lr=%4f'%(e, lr))
-
-            # optimizer
-            opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
-            #self.model.zero_grad()
+            if e % 70 == 0:
+                scheduler.step()
+            print('\n==> Training Epoch #%d' % (e))
+            for param_group in opt.param_groups:
+                print("lr: ", param_group['lr'])
 
             loss_train = 0
             # Training
@@ -50,7 +56,7 @@ class Trainer:
 
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
-                
+
                 #calculate loss
                 loss = loss_func(pred, target)
                 loss.backward()
@@ -60,6 +66,7 @@ class Trainer:
                 #print(loss_train)
                 #input()
 
+            loss_train = loss_train / len(tr_loader)
 
             # Validate
             loss_val = 0
@@ -71,7 +78,9 @@ class Trainer:
                 
                 #calculate loss
                 loss_val += loss_func(pred, target).item()
-                    
+
+            loss_val = loss_val  / len(va_loader)
+
             # print model result
             sys.stdout.write('\r')
             sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
@@ -91,7 +100,7 @@ class Trainer:
                 best_loss = loss_val
 
             # early stopping
-            if (e-best_epoch) > 100:
+            if (e-best_epoch) > 20:
                 print(e, best_epoch)
                 print('early stopping')
                 break

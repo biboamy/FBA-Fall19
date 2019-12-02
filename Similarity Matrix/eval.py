@@ -6,6 +6,7 @@ from torch.autograd import Variable
 from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
+from config import *
 
 def evaluate_classification(targets, predictions):
     print(targets.max(),targets.min(),predictions.max(),predictions.min())
@@ -40,12 +41,6 @@ def evaluate_model(model, dataloader):
 # DO NOT change the default values if possible
 # except during DEBUGGING
 
-band = 'middle'
-num_workers = 4
-model_choose = 'ConvNet_Fixed'
-
-model_name = '20191120/ConvNet_Fixed_batch16_lr1e-05'
-
 def main():
 
     matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
@@ -57,7 +52,7 @@ def main():
     va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
     te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
 
-    model_path = './model/'+model_name+'/model'
+    model_path = './model/'+model_name_e+'/model'
     # build model (function inside model.py)
     if model_choose == 'ConvNet':
         model = Net()
@@ -67,7 +62,7 @@ def main():
         model.cuda()
     model.load_state_dict(torch.load(model_path)['state_dict'])
 
-    print('model :', model_name)
+    print('model :', model_name_e)
     train_metrics = evaluate_model(model, tr_loader)
     print('train metrics', train_metrics)
     val_metrics = evaluate_model(model, va_loader)
@@ -81,15 +76,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--model_name", type=str, default=model_name, help="model name e.g. 20191028/testmodel")
+    parser.add_argument("--model_name_e", type=str, default=model_name_e, help="model name e.g. 20191028/testmodel")
     parser.add_argument("--model_choose", type=str, default=model_choose)
 
     args = parser.parse_args()
 
     # overwrite params
-    model_name = args.model_name
+    model_name_e = args.model_name_e
     model_choose = args.model_choose
 
-    print(model_name, model_choose)
+    print(model_name_e, model_choose)
 
     main()
