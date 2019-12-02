@@ -3,8 +3,8 @@ import h5py
 import dill
 import numpy as np
 
-h5path = '../../../data_share/FBA/fall19/data/matrix/middle_2_3_matrix.h5'
-id2idxpath = '../../../data_share/FBA/fall19/data/matrix/middle_id2idx.dill'
+h5path = '/home/data_share/FBA/fall19/data/matrix/middle_2_3_matrix.h5'
+id2idxpath = '/home/data_share/FBA/fall19/data/matrix/middle_id2idx.dill'
 
 id2idx = dill.load(open(id2idxpath, 'rb'))
 data = h5py.File(h5path, 'r')
@@ -40,6 +40,5 @@ def createMatrixDill(PC, saveDill):
 createMatrixDill(trPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_train.dill')
 createMatrixDill(vaPC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_valid.dill')
 createMatrixDill(tePC, '/home/data_share/FBA/fall19/data/matrix/matrix_fixed_test.dill')
-
 
 data.close()

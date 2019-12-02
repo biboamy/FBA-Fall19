@@ -11,6 +11,8 @@ import h5py
 from scipy.signal import decimate
 import time
 from tqdm import tqdm
+
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 from lib import load_data, load_test_data
 
 # Initialize input params, specify the band, intrument, segment information
@@ -21,6 +23,7 @@ YEAR = ['2013', '2014', '2015']
 
 feat = 'pitch contour'
 midi_op = 'res12'
+band = 'middle'
 
 if sys.version_info[0] < 3:
     PATH_FBA_ANNO = '/Data/FBA2013/'
@@ -91,7 +94,7 @@ for band in BAND:
         print('{} to {}'.format(p[i], p[i+1]))
 
         file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(i)
-        with open('../../../data_share/FBA/fall19/data/matrix/' + file_name + '.dill', 'wb') as f:
+        with open('/home/data_share/FBA/fall19/data/matrix/' + file_name + '.dill', 'wb') as f:
             dill.dump(matrix_data, f)
 
 
@@ -100,7 +103,7 @@ sc_dim = 500
 pc_dim = 6931
 cnt = 0
 
-f = h5py.File('../../../data_share/FBA/fall19/data/matrix/{}_{}_3_matrix.h5'.format(band, SEGMENT), 'w')
+f = h5py.File('/home/data_share/FBA/fall19/data/matrix/{}_{}_3_matrix.h5'.format(band, SEGMENT), 'w')
 f.create_dataset('matrix', (0, pc_dim), maxshape=(None, pc_dim))
 f.create_dataset('sc_idx', (0, 3), maxshape=(None, 3)) # (i, j, k) -> f['matrix'][i:j, 0:k]
 id2idx = {'2013':{}, '2014':{}, '2015':{}}
@@ -114,7 +117,7 @@ def write_incre_h5(dataset, datapoint):
 
 for i in np.arange(5):
     file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(i)
-    tmpdillfile = '../../../data_share/FBA/fall19/data/matrix/' + file_name + '.dill'
+    tmpdillfile = '/home/data_share/FBA/fall19/data/matrix/' + file_name + '.dill'
     performance = np.array(dill.load(open(tmpdillfile, 'rb')))
     for perf in performance:
         # get max dim
@@ -129,7 +132,7 @@ for i in np.arange(5):
         #    pc_dim = pc_dim_i
 
         i, j, k = ds_mtx.shape[0], ds_mtx.shape[0]+sc_dim_i, pc_dim_i
-        write_incre_h5(ds_scidx, np.array([i, j, k]))
+        write_incre_h5(ds_scidx, np.array([[i, j, k]]))
         # padding
         mtx_cur = np.pad(mtx_cur, ((0,0),(0,pc_dim-pc_dim_i)), 'constant', constant_values=0)
         assert mtx_cur.shape[1] == pc_dim
@@ -143,6 +146,6 @@ print("write {} matrices.".format(cnt))
 f.close()
 
 print(id2idx)
-with open('../../../data_share/FBA/fall19/data/matrix/' + band + '_id2idx.dill', 'wb') as f:
+with open('/home/data_share/FBA/fall19/data/matrix/' + band + '_id2idx.dill', 'wb') as f:
     dill.dump(id2idx, f)
 

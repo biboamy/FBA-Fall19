@@ -113,7 +113,7 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(64, 1024), # first dim need to be determined
+            nn.Linear(784, 1024), # first dim need to be determined
             nn.ReLU(),
             nn.Linear(1024, 1024),
             nn.ReLU(),
@@ -132,9 +132,9 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
         # get mini batch size from input and reshape
         oup = self.conv(input)
         #oup = oup.flatten()
-        oup = oup.view(-1, 64)
+        oup = oup.view(-1, 784)
         oup = self.classifier(oup)
-        oup = F.sigmoid(oup)
+        oup = torch.sigmoid(oup)
 
         return oup
 

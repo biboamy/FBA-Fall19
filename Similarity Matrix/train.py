@@ -9,7 +9,7 @@ batch_size = 16
 num_workers = 1 # fixed
 shuffle = True # fixed
 epoch = 1000 # fixed
-lr = 0.00001
+lr = 0.01
 model_choose = 'ConvNet_Fixed'
 
 def main():
