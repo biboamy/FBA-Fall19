@@ -1,10 +1,22 @@
-import os, torch
+import os, torch, random
 from model import Net, Net_Fixed
 from train_utils import Trainer
 from lib import load_data, Data2Torch
 from config import *
+import numpy as np
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
+
+np.random.seed(manualSeed)
+random.seed(manualSeed)
+torch.manual_seed(manualSeed)
+# if you are suing GPU
+torch.cuda.manual_seed(manualSeed)
+torch.cuda.manual_seed_all(manualSeed)
+
+torch.backends.cudnn.enabled = False 
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 def main():
 
@@ -24,8 +36,8 @@ def main():
     # prepare dataloader (function inside lib.py)
     t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
     v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), **t_kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **v_kwargs)
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), worker_init_fn=np.random.seed(manualSeed), **t_kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), worker_init_fn=np.random.seed(manualSeed), **v_kwargs)
     
     # build model (function inside model.py)
     if model_choose == 'ConvNet':
@@ -43,3 +55,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+    print(manualSeed)

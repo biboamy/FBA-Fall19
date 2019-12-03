@@ -8,7 +8,9 @@ matrix_dim = 600 # resize dim
 model_choose = 'ConvNet_Fixed'
 band = 'middle'
 
-model_name = '{}_{}_batch{}_lr{}'.format(model_choose, matrix_dim, batch_size, lr)
+manualSeed = 11
+
+model_name = '{}_{}_batch{}_lr{}_{}'.format(model_choose, matrix_dim, batch_size, lr, manualSeed)
 
 from datetime import date
 date = date.today()

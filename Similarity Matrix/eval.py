@@ -1,12 +1,23 @@
 from sklearn import metrics
 from model import Net, Net_Fixed
 from lib import load_data, load_test_data, Data2Torch
-import os, torch
+import os, torch, random
 from torch.autograd import Variable
 from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
 from config import *
+
+np.random.seed(manualSeed)
+random.seed(manualSeed)
+torch.manual_seed(manualSeed)
+# if you are suing GPU
+torch.cuda.manual_seed(manualSeed)
+torch.cuda.manual_seed_all(manualSeed)
+
+torch.backends.cudnn.enabled = False 
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 def evaluate_classification(targets, predictions):
     print(targets.max(),targets.min(),predictions.max(),predictions.min())
@@ -48,9 +59,9 @@ def main():
     tePC = load_test_data(matrix_path)
 
     kwargs = {'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), **kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
-    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
+    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
 
     model_path = './model/'+model_name_e+'/model'
     # build model (function inside model.py)
