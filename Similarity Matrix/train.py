@@ -1,5 +1,5 @@
 import os, torch, random
-from model import Net, Net_Fixed
+from model import Net_Fixed
 from train_utils import Trainer
 from lib import load_data, Data2Torch
 from config import *
@@ -40,10 +40,7 @@ def main():
     va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), worker_init_fn=np.random.seed(manualSeed), **v_kwargs)
     
     # build model (function inside model.py)
-    if model_choose == 'ConvNet':
-        model = Net()
-    elif model_choose == 'ConvNet_Fixed':
-        model = Net_Fixed()
+    model = Net_Fixed()
     model.to(device)
     
     # start training (function inside train_utils.py)

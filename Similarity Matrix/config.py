@@ -3,9 +3,9 @@ batch_size = 32
 num_workers = 1 # fixed
 shuffle = True # fixed
 epoch = 1000 # fixed
-lr = 0.1
+lr = 0.05
 matrix_dim = 600 # resize dim
-model_choose = 'ConvNet_Fixed'
+model_choose = 'ConvNet_Residual_10layers' #'ConvNet_Fixed'
 band = 'middle'
 
 manualSeed = 11

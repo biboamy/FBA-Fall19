@@ -1,5 +1,5 @@
 from sklearn import metrics
-from model import Net, Net_Fixed
+from model import Net_Fixed
 from lib import load_data, load_test_data, Data2Torch
 import os, torch, random
 from torch.autograd import Variable
@@ -65,10 +65,7 @@ def main():
 
     model_path = './model/'+model_name_e+'/model'
     # build model (function inside model.py)
-    if model_choose == 'ConvNet':
-        model = Net()
-    elif model_choose == 'ConvNet_Fixed':
-        model = Net_Fixed()
+    model = Net_Fixed()
     if torch.cuda.is_available():
         model.cuda()
     model.load_state_dict(torch.load(model_path)['state_dict'])
