@@ -32,7 +32,7 @@ def main():
     # load training and validation data (function inside lib.py)
     matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
     trPC, vaPC = load_data(matrix_path)
-    
+    print(len(trPC))
     # prepare dataloader (function inside lib.py)
     t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
     v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
