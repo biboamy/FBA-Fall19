@@ -3,6 +3,7 @@ import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
 from tensorboard_logger import configure, log_value
+from sklearn import metrics
 
 class Trainer:
     def __init__(self, model, lr, epoch, save_fn):
@@ -45,8 +46,8 @@ class Trainer:
             if e % 70 == 0:
                 scheduler.step()
             print('\n==> Training Epoch #%d' % (e))
-            for param_group in opt.param_groups:
-                print("lr: ", param_group['lr'])
+            #for param_group in opt.param_groups:
+            #    print("lr: ", param_group['lr'])
 
             loss_train = 0
             # Training
@@ -70,23 +71,25 @@ class Trainer:
 
             # Validate
             loss_val = 0
+            r2_val = 0
             for batch_idx, _input in enumerate(va_loader):
                 matrix, target = Variable(_input[0].to(device)), Variable(_input[1].to(device))
                 
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
-                
                 #calculate loss
                 loss_val += loss_func(pred, target).item()
+                r2_val += metrics.r2_score(target.data.cpu().numpy(), pred.data.cpu().numpy())
 
             loss_val = loss_val  / len(va_loader)
+            r2_val = r2_val / len(va_loader)
 
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
-                    %(e, self.epoch, loss_train, loss_val, time.time() - st))
+            sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  R2_val %4f  Time %d'
+                    %(e, self.epoch, loss_train, loss_val, r2_val, time.time() - st))
             sys.stdout.flush()
-            print ('\n')
+            #print ('\n')
 
             # log data for visualization later
             log_value('train_loss', loss_train, e)

@@ -1,3 +1,5 @@
+import random
+
 # training parameters
 batch_size = 32
 num_workers = 1 # fixed
@@ -5,10 +7,10 @@ shuffle = True # fixed
 epoch = 1000 # fixed
 lr = 0.05
 matrix_dim = 600 # resize dim
-model_choose = 'ConvNet_Residual_10layers' #'ConvNet_Fixed'
+model_choose = 'ConvNet_Residual' #'ConvNet_Fixed'
 band = 'middle'
 
-manualSeed = 11
+manualSeed = 11#random.randint(0, 1000) #11
 
 model_name = '{}_{}_batch{}_lr{}_{}'.format(model_choose, matrix_dim, batch_size, lr, manualSeed)
 

@@ -32,15 +32,15 @@ def main():
     # load training and validation data (function inside lib.py)
     matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
     trPC, vaPC = load_data(matrix_path)
-    print(len(trPC))
+   
     # prepare dataloader (function inside lib.py)
-    t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
-    v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
+    t_kwargs = {'batch_size': batch_size, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
+    v_kwargs = {'batch_size': batch_size, 'pin_memory': True}
     tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), worker_init_fn=np.random.seed(manualSeed), **t_kwargs)
     va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), worker_init_fn=np.random.seed(manualSeed), **v_kwargs)
     
     # build model (function inside model.py)
-    model = Net_Fixed()
+    model = Net_Fixed(model_name)
     model.to(device)
     
     # start training (function inside train_utils.py)

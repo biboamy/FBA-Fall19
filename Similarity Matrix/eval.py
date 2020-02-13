@@ -8,21 +8,10 @@ import numpy as np
 from scipy.stats import pearsonr
 from config import *
 
-np.random.seed(manualSeed)
-random.seed(manualSeed)
-torch.manual_seed(manualSeed)
-# if you are suing GPU
-torch.cuda.manual_seed(manualSeed)
-torch.cuda.manual_seed_all(manualSeed)
-
-torch.backends.cudnn.enabled = False 
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
-
 def evaluate_classification(targets, predictions):
-    print(targets.max(),targets.min(),predictions.max(),predictions.min())
-    predictions[predictions>1]=1
-    predictions[predictions<0]=0
+    print(targets.max(),targets.min(),predictions.max(),predictions.min(), len(predictions))
+    #predictions[predictions>1]=1
+    #predictions[predictions<0]=0
     #print(np.squeeze(targets), predictions)
     r2 = metrics.r2_score(targets, predictions)
     corrcoef, p = pearsonr(np.squeeze(targets), np.squeeze(predictions))
@@ -36,17 +25,13 @@ def evaluate_classification(targets, predictions):
     return np.round(r2, decimals=3), np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
 
 def evaluate_model(model, dataloader):
-    model.eval()
     all_predictions = []
     all_targets = []
     for i, (_input) in enumerate(dataloader):
         matrix, target = Variable(_input[0].cuda()), Variable(_input[1].cuda())
-        target = target.view(-1,1)
         pred = model(matrix.unsqueeze(1))
-        #print(target, pred)
-        all_predictions.extend(torch.mean(pred, 0, keepdim=True).data.cpu().numpy())
-        all_targets.extend(torch.mean(target, 0, keepdim=True).data.cpu().numpy())
-        #print(out.detach().data.cpu().numpy(),target.detach().data.cpu().numpy())
+        all_predictions.extend(pred.squeeze(1).data.cpu().numpy())
+        all_targets.extend(target.data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 # DO NOT change the default values if possible
@@ -58,18 +43,25 @@ def main():
     trPC, vaPC = load_data(matrix_path)
     tePC = load_test_data(matrix_path)
 
-    kwargs = {'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
-    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), worker_init_fn=np.random.seed(manualSeed), **kwargs)
+    kwargs = {'batch_size': batch_size, 'pin_memory': True}
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), **kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
+    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
+
+    tr = []
+    va = []
+    te = []
+
+    #for i in range(0, 100):
+    #    model_name_e = '2020212/ConvNet_Residual_600_batch32_lr0.05_'+str(i)
 
     model_path = './model/'+model_name_e+'/model'
     # build model (function inside model.py)
-    model = Net_Fixed()
+    model = Net_Fixed(model_name_e)
     if torch.cuda.is_available():
         model.cuda()
     model.load_state_dict(torch.load(model_path)['state_dict'])
-
+    #model.eval()
     print('model :', model_name_e)
     train_metrics = evaluate_model(model, tr_loader)
     print('train metrics', train_metrics)
@@ -79,20 +71,23 @@ def main():
     print('test metrics', test_metrics)
     print('--------------------------------------------------')
 
+    #    tr.extend([train_metrics[0]])
+    #    va.extend([val_metrics[0]])
+    #    te.extend([test_metrics[0]])
+    #print(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te))
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--model_name_e", type=str, default=model_name_e, help="model name e.g. 20191028/testmodel")
-    parser.add_argument("--model_choose", type=str, default=model_choose)
+    parser.add_argument("--model_name_e", type=str, help="model name e.g. 20191028/testmodel")
 
     args = parser.parse_args()
 
     # overwrite params
     model_name_e = args.model_name_e
-    model_choose = args.model_choose
 
-    print(model_name_e, model_choose)
+    print(model_name_e)
 
     main()
