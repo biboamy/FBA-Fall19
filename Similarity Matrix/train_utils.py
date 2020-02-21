@@ -26,7 +26,7 @@ class Trainer:
         current = datetime.datetime.now()
 
         # configure tensor-board logger
-        configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
+        #configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader, device):
         st = time.time()
@@ -72,9 +72,18 @@ class Trainer:
             # Validate
             loss_val = 0
             r2_val = 0
+            self.model.eval()
             for batch_idx, _input in enumerate(va_loader):
                 matrix, target = Variable(_input[0].to(device)), Variable(_input[1].to(device))
-                
+
+                for i in [1, 4, 7]:
+                    self.model.model.conv[i].bn1.momentum = 0
+                    self.model.model.conv[i].bn2.momentum = 0
+                    self.model.model.conv[i].bn3.momentum = 0
+                    self.model.model.conv[i].bn1.track_running_stats = False
+                    self.model.model.conv[i].bn2.track_running_stats = False
+                    self.model.model.conv[i].bn3.track_running_stats = False
+
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
                 #calculate loss
@@ -92,8 +101,8 @@ class Trainer:
             #print ('\n')
 
             # log data for visualization later
-            log_value('train_loss', loss_train, e)
-            log_value('val_loss', loss_val, e)
+            #log_value('train_loss', loss_train, e)
+            #log_value('val_loss', loss_val, e)
 
             # save model
             if loss_val < best_loss:

@@ -7,18 +7,21 @@ from config import *
 class block(nn.Module):
     def __init__(self, inp, out):
         super(block, self).__init__()
-        self.bn1 = nn.BatchNorm2d(inp)       
+        momentum = 0.5
+        self.bn1 = nn.BatchNorm2d(inp, momentum=momentum)       
         self.conv1 = nn.Conv2d(inp, out, (3,3), padding=(1,1))
-        self.bn2 = nn.BatchNorm2d(out)       
+        self.bn2 = nn.BatchNorm2d(out, momentum=momentum)       
         self.conv2 = nn.Conv2d(out, out, (3,3), padding=(1,1))
-        self.bn3 = nn.BatchNorm2d(out)       
+        self.bn3 = nn.BatchNorm2d(out, momentum=momentum)       
 
         self.sk = nn.Conv2d(inp, out, (1,1), padding=(0,0))
     def forward(self, x):
         out = self.conv1(self.bn1(x))
+        #out = self.conv1(x)
         out = self.conv2(F.relu(self.bn2(out)))
+        #out = self.conv2(F.relu(out))
         out = self.bn3(out)
-        out += self.sk(x)
+        #out += self.sk(x)
         return out
 
 class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
@@ -49,7 +52,8 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
                     nn.Dropout(p=0.2),
                     nn.MaxPool2d((3,3),(3,3)),
                     block(4, 4),
-                    nn.BatchNorm2d(4),
+                    nn.Dropout(p=0.2),
+                    #nn.InstanceNorm2d(4),
                     nn.ReLU(inplace=True),
                     nn.Conv2d( 4, 4, (3,3), (3,3))
                 )
