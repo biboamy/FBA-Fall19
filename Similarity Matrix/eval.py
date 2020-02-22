@@ -9,7 +9,7 @@ from scipy.stats import pearsonr
 from config import *
 import statistics
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1' 
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
 
 def evaluate_classification(targets, predictions):
     print(targets.max(),targets.min(),predictions.max(),predictions.min(), len(predictions))
@@ -40,7 +40,7 @@ def evaluate_model(model, dataloader):
 # DO NOT change the default values if possible
 # except during DEBUGGING
 
-def main():
+def main(model_name_e):
 
     matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
     trPC, vaPC = load_data(matrix_path)
@@ -58,11 +58,11 @@ def main():
 
     for i in range(0, 12):
         if True:
-            model_name_e = '2020221/ConvNet_Residual_BatchNorm_600_batch32_lr0.05_'+str(i)
+            model_name = model_name_e+'_'+str(i)
 
-            model_path = './model/'+model_name_e+'/model'
+            model_path = './model/'+model_name+'/model'
             # build model (function inside model.py)
-            model = Net_Fixed(model_name_e)
+            model = Net_Fixed(model_name)
             if torch.cuda.is_available():
                 model.cuda()
             model.load_state_dict(torch.load(model_path)['state_dict'])
@@ -76,7 +76,7 @@ def main():
                 model.model.conv[i].bn2.track_running_stats = False
                 model.model.conv[i].bn3.track_running_stats = False
 
-            print('model :', model_name_e)
+            print('model :', model_name)
             train_metrics = evaluate_model(model, tr_loader)
             print('train metrics', train_metrics)
             val_metrics = evaluate_model(model, va_loader)
@@ -105,6 +105,6 @@ if __name__ == "__main__":
     # overwrite params
     model_name_e = args.model_name_e
 
-    print(model_name_e)
+    main(model_name_e)
 
-    main()
+    print(model_name_e)

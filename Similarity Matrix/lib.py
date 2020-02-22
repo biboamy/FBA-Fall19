@@ -33,7 +33,7 @@ class Data2Torch(Dataset):
 
     def __getitem__(self, index):
         oup = self.data[index]['matrix']
-        score = self.data[index]['ratings'][0]
+        score = self.data[index]['ratings'][score_choose]
 
         return torch.from_numpy(oup).float(), torch.from_numpy(np.array([score])).float()
     

@@ -7,7 +7,8 @@ shuffle = True # fixed
 epoch = 1000 # fixed
 lr = 0.05
 matrix_dim = 600 # resize dim
-model_choose = 'ConvNet_Residual_BatchNorm' #'ConvNet_Fixed'
+score_choose = 2 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
+model_choose = 'ConvNet_Residual_BatchNorm_score'+str(score_choose) #'ConvNet_Fixed'
 band = 'middle'
 
 manualSeed = 10#random.randint(0, 1000) #11
