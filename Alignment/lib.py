@@ -32,14 +32,14 @@ def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     assert(feat=='pitch contour')
 
     # Read features from .dill files
-    pc_file = '../../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
+    pc_file = '/home/data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # train
     trPC = np.array(dill.load(open(pc_file + 'train.dill', 'rb')))
     # valid
     vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
 
     # Read scores from .dill files
-    mid_file = '../../../data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
+    mid_file = '/home/data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
     SC = dill.load(open(mid_file, 'rb')) # all scores / aligned midi
 
     return trPC, vaPC, SC
@@ -51,7 +51,7 @@ def load_test_data(band='middle', feat='pitch contour'):
     assert(feat=='pitch contour')
 
     # Read features from .dill files
-    pc_file = '../../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
+    pc_file = '/home/data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # test
     tePC = np.array(dill.load(open(pc_file + 'test.dill', 'rb')))
 
@@ -259,12 +259,14 @@ def test_collate(collate_params, batch):
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
+      
             batch[i] = (pc, sc, y)
 
         return batch
 
     def overlap(batch, hopSize):
         pc, sc, y = [], [], []
+        print(batch)
         for i, data in enumerate(batch):
             j = 0
             while (j+c_size) < len(data[0]-10): # -10: possible dismatch in size between pc & alignment

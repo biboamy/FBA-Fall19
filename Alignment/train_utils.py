@@ -25,7 +25,7 @@ class Trainer:
 
         # configure tensor-board logger
         # e.g. model_name_10:28:01:54
-        configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
+        #configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader):
         st = time.time()
@@ -77,11 +77,10 @@ class Trainer:
             sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
                     %(e, self.epoch, loss_train, loss_val, time.time() - st))
             sys.stdout.flush()
-            print ('\n')
 
             # log data for visualization later
-            log_value('train_loss', loss_train, e)
-            log_value('val_loss', loss_val, e)
+            #log_value('train_loss', loss_train, e)
+            #log_value('val_loss', loss_val, e)
 
             # save model
             if loss_val < best_loss:

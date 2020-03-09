@@ -6,11 +6,12 @@ from torch.autograd import Variable
 from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' 
 
 def evaluate_classification(targets, predictions):
-    print(targets.max(),targets.min(),predictions.max(),predictions.min())
-    predictions[predictions>1]=1
-    predictions[predictions<0]=0
+    #print(targets.max(),targets.min(),predictions.max(),predictions.min())
+    #predictions[predictions>1]=1
+    #predictions[predictions<0]=0
     r2 = metrics.r2_score(targets, predictions)
     corrcoef, p = pearsonr(np.squeeze(targets), predictions)
     targets = np.round(targets*10).astype(int)
@@ -20,7 +21,7 @@ def evaluate_classification(targets, predictions):
     predictions = np.round(predictions).astype(int)
     accuracy = metrics.accuracy_score(targets, predictions)
 
-    return np.round(r2, decimals=3), np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
+    return np.round(r2, decimals=3)#, np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
 
 def evaluate_model(model, dataloader):
     model.eval()
@@ -32,7 +33,7 @@ def evaluate_model(model, dataloader):
         pitch_v, score_v = model(pitch.reshape(-1,pitch.shape[-1]), score.reshape(-1,pitch.shape[-1]))
         out = distance_loss(pitch_v, score_v, target.squeeze(1)) [1]
         all_predictions.extend(torch.mean(out, 0, keepdim=True).data.cpu().numpy())
-        all_targets.extend(torch.mean(target, 0, keepdim=True).data.cpu().numpy())
+        all_targets.extend(torch.mean(target.squeeze(1), 0, keepdim=True).data.cpu().numpy())
         #print(out.detach().data.cpu().numpy(),target.detach().data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
@@ -47,39 +48,44 @@ model_choose = 'CNN'
 
 overlap_flag = False
 chunk_size = 1000
-model_name = '20191028/Similarity_batch16_lr0.001_midialigned_s_randomChunk_sample3_chunksize2000_CNN'
 
 def main():
+    train_metrics, val_metrics, test_metrics = [], [], []
+    for i in range(0,10):
+        model_name = '202039/Similarity_batch16_lr0.001_midialigned_s_windowChunk_sample1_chunksize1000_CNN_'+str(i)
 
-    # if resize the midi to fit the length of audio
-    resample = False
-    if midi_op == 'resize':
-        resample = True
+        # if resize the midi to fit the length of audio
+        resample = False
+        if midi_op == 'resize':
+            resample = True
 
-    trPC, vaPC, SC = load_data(band, feat, midi_op)
-    tePC = load_test_data(band, feat)
+        trPC, vaPC, SC = load_data(band, feat, midi_op)
+        tePC = load_test_data(band, feat)
 
-    kwargs = {'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+        kwargs = {'num_workers': num_workers, 'pin_memory': True}
+        tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
+                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+        va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
+                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+        te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
+                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
 
-    model_path = './model/'+model_name+'/model'
-    model = Net(model_choose)
-    if torch.cuda.is_available():
-        model.cuda()
-    model.load_state_dict(torch.load(model_path)['state_dict'])
-
+        model_path = './model/'+model_name+'/model'
+        model = Net(model_choose)
+        if torch.cuda.is_available():
+            model.cuda()
+        model.load_state_dict(torch.load(model_path)['state_dict'])
+        tr = evaluate_model(model, tr_loader)
+        va = evaluate_model(model, va_loader)
+        te = evaluate_model(model, te_loader)
+        train_metrics.append(tr)
+        val_metrics.append(va)
+        test_metrics.append(te)
+        print(tr, va, te)
     print('model :', model_name)
-    train_metrics = evaluate_model(model, tr_loader)
-    print('train metrics', train_metrics)
-    val_metrics = evaluate_model(model, va_loader)
-    print('valid metrics', val_metrics)
-    test_metrics = evaluate_model(model, te_loader)
-    print('test metrics', test_metrics)
+    print('train metrics', sum(train_metrics)/len(train_metrics))
+    print('valid metrics', sum(val_metrics)/len(val_metrics))
+    print('test metrics', sum(test_metrics)/len(test_metrics))
     print('--------------------------------------------------')
 
 if __name__ == "__main__":
@@ -88,7 +94,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # string
     parser.add_argument("--midi_op", type=str, default=midi_op)
-    parser.add_argument("--model_name", type=str, default=model_name, help="model name e.g. 20191028/testmodel")
+    #parser.add_argument("--model_name", type=str, default=model_name, help="model name e.g. 20191028/testmodel")
     parser.add_argument("--model_choose", type=str, default=model_choose)
 
     # int
@@ -100,12 +106,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # overwrite params
-    model_name = args.model_name
+    #model_name = args.model_name
     midi_op = args.midi_op
     overlap_flag = args.overlap
     model_choose = args.model_choose
     chunk_size = args.chunk_size
-
-    print(model_name, midi_op, overlap_flag, model_choose, chunk_size)
 
     main()

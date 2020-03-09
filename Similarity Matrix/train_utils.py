@@ -3,6 +3,7 @@ import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
 from tensorboard_logger import configure, log_value
+from sklearn import metrics
 
 class Trainer:
     def __init__(self, model, lr, epoch, save_fn):
@@ -20,8 +21,12 @@ class Trainer:
         file_info = 'tensorlog'
 
         # configure tensor-board logger
-        # e.g. model_name
-        configure('runs/' + save_fn.split('/')[-1], flush_secs=2)
+        import datetime
+
+        current = datetime.datetime.now()
+
+        # configure tensor-board logger
+        #configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
 
     def fit(self, tr_loader, va_loader, device):
         st = time.time()
@@ -31,54 +36,73 @@ class Trainer:
         save_dict['tr_loss'] = []
         best_loss = 1000000000
 
+        opt = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=1e-3)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(opt, 0.5, last_epoch=-1)
+
         for e in range(1, self.epoch+1):
-            #learning rate (learning rate decay during training process)
-            lr = self.lr / (((e//(70*1))*2)+1) 
+
             loss_total = 0
             self.model.train()
-            print( '\n==> Training Epoch #%d lr=%4f'%(e, lr))
+            if e % 70 == 0:
+                scheduler.step()
+            print('\n==> Training Epoch #%d' % (e))
+            #for param_group in opt.param_groups:
+            #    print("lr: ", param_group['lr'])
 
-            # optimizer
-            opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
-            self.model.zero_grad()  
-
-            loss_train = None
+            loss_train = 0
             # Training
             for batch_idx, _input in enumerate(tr_loader):
+                self.model.zero_grad()
                 matrix, target = Variable(_input[0].to(device)), Variable(_input[1].to(device))
 
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
-                
+
                 #calculate loss
-                if loss_train:
-                    loss_train += loss_func(pred, target)
-                else:
-                    loss_train = loss_func(pred, target)
-            loss_train.backward()
-            opt.step()
+                loss = loss_func(pred, target)
+                loss.backward()
+                opt.step()
+
+                loss_train += loss.item()
+                #print(loss_train)
+                #input()
+
+            loss_train = loss_train / len(tr_loader)
 
             # Validate
             loss_val = 0
+            r2_val = 0
+            self.model.eval()
             for batch_idx, _input in enumerate(va_loader):
                 matrix, target = Variable(_input[0].to(device)), Variable(_input[1].to(device))
-                
+
+                for i in [1, 4, 7]:
+                    self.model.model.conv[i].bn1.momentum = 0
+                    self.model.model.conv[i].bn2.momentum = 0
+                    self.model.model.conv[i].bn3.momentum = 0
+                    self.model.model.conv[i].bn1.track_running_stats = False
+                    self.model.model.conv[i].bn2.track_running_stats = False
+                    self.model.model.conv[i].bn3.track_running_stats = False
+
                 #predict latent vectors 
                 pred = self.model(matrix.unsqueeze(1))
-                
                 #calculate loss
-                loss_val += loss_func(pred, target)
-                    
+                loss_val += loss_func(pred, target).item()
+                r2_val += metrics.r2_score(target.data.cpu().numpy(), pred.data.cpu().numpy())
+
+            loss_val = loss_val  / len(va_loader)
+            r2_val = r2_val / len(va_loader)
+
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
-                    %(e, self.epoch, loss_train, loss_val, time.time() - st))
+            sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  R2_val %4f  Time %d'
+                    %(e, self.epoch, loss_train, loss_val, r2_val, time.time() - st))
             sys.stdout.flush()
-            print ('\n')
+            #print ('\n')
 
             # log data for visualization later
-            log_value('train_loss', loss_train, e)
-            log_value('val_loss', loss_val, e)
+            #log_value('train_loss', loss_train, e)
+            #log_value('val_loss', loss_val, e)
 
             # save model
             if loss_val < best_loss:
@@ -88,7 +112,7 @@ class Trainer:
                 best_loss = loss_val
 
             # early stopping
-            if (e-best_epoch) > 100:
+            if (e-best_epoch) > 20:
                 print(e, best_epoch)
                 print('early stopping')
                 break

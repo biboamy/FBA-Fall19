@@ -1,18 +1,23 @@
 from sklearn import metrics
-from model import Net
-from lib import load_data, load_test_data, Data2Torch, distance_loss, test_collate
-import os, torch
+from model import Net_Fixed
+from lib import load_data, load_test_data, Data2Torch
+import os, torch, random
 from torch.autograd import Variable
 from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
+from config import *
+import statistics
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
 
 def evaluate_classification(targets, predictions):
-    print(targets.max(),targets.min(),predictions.max(),predictions.min())
-    predictions[predictions>1]=1
-    predictions[predictions<0]=0
+    print(targets.max(),targets.min(),predictions.max(),predictions.min(), len(predictions))
+    #predictions[predictions>1]=1
+    #predictions[predictions<0]=0
+    #print(np.squeeze(targets), predictions)
     r2 = metrics.r2_score(targets, predictions)
-    corrcoef, p = pearsonr(np.squeeze(targets), predictions)
+    corrcoef, p = pearsonr(np.squeeze(targets), np.squeeze(predictions))
     targets = np.round(targets*10).astype(int)
     predictions = predictions * 10
     predictions[predictions < 0] = 0
@@ -23,89 +28,83 @@ def evaluate_classification(targets, predictions):
     return np.round(r2, decimals=3), np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
 
 def evaluate_model(model, dataloader):
-    model.eval()
     all_predictions = []
     all_targets = []
     for i, (_input) in enumerate(dataloader):
-        pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
-        target = target.view(-1,1)
-        pitch_v, score_v = model(pitch.reshape(-1,pitch.shape[-1]), score.reshape(-1,pitch.shape[-1]))
-        out = distance_loss(pitch_v, score_v, target.squeeze(1)) [1]
-        all_predictions.extend(torch.mean(out, 0, keepdim=True).data.cpu().numpy())
-        all_targets.extend(torch.mean(target, 0, keepdim=True).data.cpu().numpy())
-        #print(out.detach().data.cpu().numpy(),target.detach().data.cpu().numpy())
+        matrix, target = Variable(_input[0].cuda()), Variable(_input[1].cuda())
+        pred = model(matrix.unsqueeze(1))
+        all_predictions.extend(pred.squeeze(1).data.cpu().numpy())
+        all_targets.extend(target.data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 # DO NOT change the default values if possible
 # except during DEBUGGING
 
-band = 'middle'
-feat = 'pitch contour'
-midi_op = 'aligned_s' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
-num_workers = 4
-model_choose = 'CNN'
+def main(model_name_e):
 
-overlap_flag = False
-chunk_size = 1000
-model_name = '20191028/Similarity_batch16_lr0.001_midialigned_s_randomChunk_sample3_chunksize2000_CNN'
+    matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
+    trPC, vaPC = load_data(matrix_path)
+    tePC = load_test_data(matrix_path)
 
-def main():
+    kwargs = {'batch_size': batch_size, 'pin_memory': True}
+    #kwargs = {'pin_memory': True}
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), **kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
+    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
 
-    # if resize the midi to fit the length of audio
-    resample = False
-    if midi_op == 'resize':
-        resample = True
+    tr = []
+    va = []
+    te = []
 
-    trPC, vaPC, SC = load_data(band, feat, midi_op)
-    tePC = load_test_data(band, feat)
+    for i in range(0, 12):
+        if True:
+            model_name = model_name_e+'_'+str(i)
 
-    kwargs = {'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
-                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+            model_path = './model/'+model_name+'/model'
+            # build model (function inside model.py)
+            model = Net_Fixed(model_name)
+            if torch.cuda.is_available():
+                model.cuda()
+            model.load_state_dict(torch.load(model_path)['state_dict'])
+            model.eval()
 
-    model_path = './model/'+model_name+'/model'
-    model = Net(model_choose)
-    if torch.cuda.is_available():
-        model.cuda()
-    model.load_state_dict(torch.load(model_path)['state_dict'])
+            for i in [1, 4, 7]:
+                model.model.conv[i].bn1.momentum = 0
+                model.model.conv[i].bn2.momentum = 0
+                model.model.conv[i].bn3.momentum = 0
+                model.model.conv[i].bn1.track_running_stats = False
+                model.model.conv[i].bn2.track_running_stats = False
+                model.model.conv[i].bn3.track_running_stats = False
 
-    print('model :', model_name)
-    train_metrics = evaluate_model(model, tr_loader)
-    print('train metrics', train_metrics)
-    val_metrics = evaluate_model(model, va_loader)
-    print('valid metrics', val_metrics)
-    test_metrics = evaluate_model(model, te_loader)
-    print('test metrics', test_metrics)
-    print('--------------------------------------------------')
+            print('model :', model_name)
+            train_metrics = evaluate_model(model, tr_loader)
+            print('train metrics', train_metrics)
+            val_metrics = evaluate_model(model, va_loader)
+            print('valid metrics', val_metrics)
+            test_metrics = evaluate_model(model, te_loader)
+            print('test metrics', test_metrics)
+            print('--------------------------------------------------')
+
+            tr.extend([train_metrics[0]])
+            va.extend([val_metrics[0]])
+            te.extend([test_metrics[0]])
+    print(tr, max(tr), min(tr), statistics.median(tr))
+    print(va, max(va), min(va), statistics.median(va))
+    print(te, max(te), min(te), statistics.median(te))
+    print(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te),lr)
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--midi_op", type=str, default=midi_op)
-    parser.add_argument("--model_name", type=str, default=model_name, help="model name e.g. 20191028/testmodel")
-    parser.add_argument("--model_choose", type=str, default=model_choose)
-
-    # int
-    parser.add_argument("--chunk_size", type=int, default=chunk_size)
-
-    # bool
-    parser.add_argument("--overlap", type=bool, default=overlap_flag)
+    parser.add_argument("--model_name_e", type=str, help="model name e.g. 20191028/testmodel")
 
     args = parser.parse_args()
 
     # overwrite params
-    model_name = args.model_name
-    midi_op = args.midi_op
-    overlap_flag = args.overlap
-    model_choose = args.model_choose
-    chunk_size = args.chunk_size
+    model_name_e = args.model_name_e
 
-    print(model_name, midi_op, overlap_flag, model_choose, chunk_size)
+    main(model_name_e)
 
-    main()
+    print(model_name_e)
