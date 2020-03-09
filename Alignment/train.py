@@ -2,6 +2,8 @@ import os, torch
 from model import Net
 from train_utils import Trainer
 from functools import partial
+import numpy as np
+import random
 from lib import load_data, Data2Torch, my_collate, check_missing_alignedmidi
 os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
@@ -11,7 +13,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 band = 'middle' # fixed
 feat = 'pitch contour' # fixed
 midi_op = 'aligned_s' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
-model_choose = 'CNN'
+model_choose = 'CNN' #CNN CRNN
 
 # training parameters
 batch_size = 16
@@ -21,57 +23,71 @@ epoch = 1000 # fixed
 lr = 0.001
 
 loss_func = 'Similarity'
-process_collate = 'randomChunk' # 'randomChunk', 'windowChunk', 'padding'
-sample_num = 3 # numbers of chunks # if choosing windowChunk, sample_num has to be 1
+process_collate = 'windowChunk' # 'randomChunk', 'windowChunk', 'padding'
+sample_num = 1 # numbers of chunks # if choosing windowChunk, sample_num has to be 1
 chunk_size = 1000 # 1000 ~ 5 sec / 2000 ~ 10 sec
+
+torch.backends.cudnn.enabled = False 
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 def main():
 
-    model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}'.format(loss_func, batch_size, lr, midi_op, \
-                                                                            process_collate, sample_num, chunk_size, \
-                                                                            model_choose)
-    #'Similarity_batch16_lr0.001_midialigneds_windowChunk1sample10sec_CNN'
+    for i in range(0,10):
 
-    print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
-    print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
+        manualSeed = i
+        np.random.seed(manualSeed)
+        random.seed(manualSeed)
+        torch.manual_seed(manualSeed)
+        # if you are suing GPU
+        torch.cuda.manual_seed(manualSeed)
+        torch.cuda.manual_seed_all(manualSeed)
 
-    #check_missing_alignedmidi(band, feat, midi_op)
+        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}_{}'.format(loss_func, batch_size, lr, midi_op, \
+                                                                                process_collate, sample_num, chunk_size, \
+                                                                                model_choose, manualSeed)
+        #'Similarity_batch16_lr0.001_midialigneds_windowChunk1sample10sec_CNN'
 
-    # model saving path
-    from datetime import date
-    date = date.today()
-    out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
-    if not os.path.exists(out_model_fn):
-        os.makedirs(out_model_fn)
+        print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
+        print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
 
-    # load training and validation data (function inside lib.py)
-    trPC, vaPC, SC = load_data(band, feat, midi_op)
+        #check_missing_alignedmidi(band, feat, midi_op)
 
-    # if resize the midi to fit the length of audio
-    resample = False
-    if midi_op == 'resize':
-        resample = True
+        # model saving path
+        from datetime import date
+        date = date.today()
+        out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
+        if not os.path.exists(out_model_fn):
+            os.makedirs(out_model_fn)
 
-    # prepare dataloader (function inside lib.py)
-    t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
-    v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
-                                            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
-                                            **t_kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
-                                            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
-                                            **t_kwargs)
+        # load training and validation data (function inside lib.py)
+        trPC, vaPC, SC = load_data(band, feat, midi_op)
 
-    # build model (function inside model.py)
-    model = Net(model_choose)
-    if torch.cuda.is_available():
-        model.cuda()
+        # if resize the midi to fit the length of audio
+        resample = False
+        if midi_op == 'resize':
+            resample = True
 
-    # start training (function inside train_utils.py)
-    Trer = Trainer(model, lr, epoch, out_model_fn)
-    Trer.fit(tr_loader, va_loader)
+        # prepare dataloader (function inside lib.py)
+        t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
+        v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
+        tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), worker_init_fn=np.random.seed(manualSeed), \
+                                                collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
+                                                **t_kwargs)
+        va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), worker_init_fn=np.random.seed(manualSeed), \
+                                                collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
+                                                **t_kwargs)
 
-    print(model_name)
+        # build model (function inside model.py)
+        model = Net(model_choose)
+        if torch.cuda.is_available():
+            model.cuda()
+
+        # start training (function inside train_utils.py)
+        Trer = Trainer(model, lr, epoch, out_model_fn)
+        Trer.fit(tr_loader, va_loader)
+
+        print(model_name)
 
 if __name__ == "__main__":
     import argparse

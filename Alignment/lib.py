@@ -259,12 +259,14 @@ def test_collate(collate_params, batch):
             pc = torch.cat(pc,0)
             sc = torch.cat(sc,0)
             y = torch.cat(y,0).squeeze()
+      
             batch[i] = (pc, sc, y)
 
         return batch
 
     def overlap(batch, hopSize):
         pc, sc, y = [], [], []
+        print(batch)
         for i, data in enumerate(batch):
             j = 0
             while (j+c_size) < len(data[0]-10): # -10: possible dismatch in size between pc & alignment
