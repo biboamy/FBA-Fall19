@@ -20,21 +20,23 @@ class PCPerformanceVAE(nn.Module):
         self.num_conv_features = 4
         self.num_recurrent_layers = 2
         self.z_dim = 32
+        self.n_layers = 1
+
         # define the different convolutional modules
         self.enc_conv_layers = nn.Sequential(
-            # define the 1st convolutional layer
+            # define the 1st convolutional layer (batch, ncf, 665)
             nn.Conv1d(1, self.num_conv_features, self.conv_kernel_size, self.conv_stride),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
-            # define the 2nd convolutional layer
+            # define the 2nd convolutional layer (batch, ncf, 220)
             nn.Conv1d(self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
-            # define the 3rd convolutional layer
+            # define the 3rd convolutional layer (batch, ncf, 72)
             nn.Conv1d(2 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
-            # define the 4th convolutional layer
+            # define the 4th convolutional layer (batch, ncf, 22)
             nn.Conv1d(4 * self.num_conv_features, 8 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
@@ -54,7 +56,7 @@ class PCPerformanceVAE(nn.Module):
         # define decoder conv layers
         self.dec_conv_layers = nn.Sequential(
             # define the 1st convolutional layer
-            nn.ConvTranspose1d(8 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.ConvTranspose1d(8 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=2),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
             # define the 2nd convolutional layer
@@ -62,13 +64,19 @@ class PCPerformanceVAE(nn.Module):
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
             # define the 3rd convolutional layer
-            nn.ConvTranspose1d(2 * self.num_conv_features, self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.ConvTranspose1d(2 * self.num_conv_features, self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=1),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
             # define the 4th convolutional layer
-            nn.ConvTranspose1d(self.num_conv_features, 1, self.conv_kernel_size, self.conv_stride),
+            nn.ConvTranspose1d(self.num_conv_features, 1, self.conv_kernel_size, self.conv_stride, output_padding=1),
             nn.ReLU(),
             nn.Dropout(p=dropout_prob),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(self.z_dim, self.z_dim*5),
+            nn.ReLU(),
+            nn.Linear(self.z_dim*5, 1)
         )
 
     def forward(self, input_tensor):
@@ -81,6 +89,7 @@ class PCPerformanceVAE(nn.Module):
                     seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
         """
         # get mini batch size from input and reshape input
+        input_tensor = input_tensor.reshape(-1, input_tensor.shape[-1])
         mini_batch_size, zero_pad_len = input_tensor.size()
         # initialize the hidden state
         self.init_hidden(mini_batch_size=mini_batch_size)
@@ -88,30 +97,36 @@ class PCPerformanceVAE(nn.Module):
         input_tensor = input_tensor.view(mini_batch_size, 1, zero_pad_len)
 
         # encode
-        z_dist = self.encode(input_tensor)
-
+        z_dist, lstm_out = self.encode(input_tensor)
         # reparametrize
         z_tilde, z_prior, prior_dist = self.reparametrize(z_dist)
 
+        performance_score = self.classifier(z_tilde)       
         # compute output of decoding layer
-        output = self.decode(z_tilde).view(input_tensor.size())
+        output = self.decode(z_tilde, lstm_out).view(input_tensor.size())
 
-        return output, z_dist, prior_dist, z_tilde, z_prior
+        return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
 
     def encode(self, x):
         # compute the output of the convolutional layer
         conv_out = self.enc_conv_layers(x)
         # compute the output of the lstm layer
         # transpose to ensure sequence length is dim 1 now
-        lstm_out, self.hidden = self.enc_rnn(conv_out.transpose(1, 2))
+        lstm_out, self.hidden = self.enc_rnn(conv_out.transpose(1, 2),self.hidden)
         # compute the mean and variance
         z_mean = self.enc_mean(self.hidden)
         z_log_std = self.enc_log_std(self.hidden)
-        z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
-        return z_distribution
+        #  (num_layers * num_directions, batch, hidden_size)
 
-    def decode(self, z):
-        pass
+        z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
+        return z_distribution, conv_out
+
+    def decode(self, z, inp):
+        dec_out, _ = self.dec_rnn(inp.transpose(1,2), z)
+  
+        dec_out = self.dec_conv_layers(dec_out.transpose(1,2))
+        
+        return dec_out
 
     @staticmethod
     def reparametrize(z_dist):
@@ -135,6 +150,6 @@ class PCPerformanceVAE(nn.Module):
         Args:
                 mini_batch_size:    number of data samples in the mini-batch
         """
-        self.hidden = Variable(torch.zeros(self.n_layers, mini_batch_size, self.hidden_size))
+        self.hidden = Variable(torch.zeros(self.n_layers, mini_batch_size, 2 * self.z_dim))
         if torch.cuda.is_available():
             self.hidden = self.hidden.cuda()
