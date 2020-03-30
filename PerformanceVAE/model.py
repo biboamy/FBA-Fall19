@@ -49,6 +49,8 @@ class PCPerformanceVAE(nn.Module):
         self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
         self.enc_log_std = nn.Linear(2 * self.z_dim, self.z_dim)
 
+        # define linear layer for input to decoder rnn
+        self.dec_in_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
         # define decoder recurrent layer
         self.dec_rnn = nn.GRU(
             self.z_dim, 8 * self.num_conv_features, self.n_layers, batch_first=True
@@ -89,6 +91,7 @@ class PCPerformanceVAE(nn.Module):
                     seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
         """
         # get mini batch size from input and reshape input
+        input_size = input_tensor.size()
         input_tensor = input_tensor.reshape(-1, input_tensor.shape[-1])
         mini_batch_size, zero_pad_len = input_tensor.size()
         # initialize the hidden state
@@ -97,35 +100,39 @@ class PCPerformanceVAE(nn.Module):
         input_tensor = input_tensor.view(mini_batch_size, 1, zero_pad_len)
 
         # encode
-        z_dist, lstm_out = self.encode(input_tensor)
+        z_dist, seq_len = self.encode(input_tensor)
         # reparametrize
         z_tilde, z_prior, prior_dist = self.reparametrize(z_dist)
 
-        performance_score = self.classifier(z_tilde)       
+        # compute performance score from latent code
+        performance_score = self.classifier(z_tilde)  # batch x 1
+
         # compute output of decoding layer
-        output = self.decode(z_tilde, lstm_out).view(input_tensor.size())
+        # create input for decoder rnn
+        dec_lstm_in = self.dec_in_linear(z_tilde).unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
+        output = self.decode(z_tilde.unsqueeze(0), dec_lstm_in).view(input_size)
 
         return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
 
     def encode(self, x):
         # compute the output of the convolutional layer
-        conv_out = self.enc_conv_layers(x)
+        conv_out = self.enc_conv_layers(x).transpose(1, 2)
+        seq_len = conv_out.shape[1]
         # compute the output of the lstm layer
         # transpose to ensure sequence length is dim 1 now
-        lstm_out, self.hidden = self.enc_rnn(conv_out.transpose(1, 2),self.hidden)
+        _, hidden = self.enc_rnn(conv_out, self.hidden)
+        hidden = torch.squeeze(hidden, 0)
         # compute the mean and variance
-        z_mean = self.enc_mean(self.hidden)
-        z_log_std = self.enc_log_std(self.hidden)
+        z_mean = self.enc_mean(hidden)
+        z_log_std = self.enc_log_std(hidden)
         #  (num_layers * num_directions, batch, hidden_size)
 
         z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
-        return z_distribution, conv_out
+        return z_distribution, seq_len
 
     def decode(self, z, inp):
-        dec_out, _ = self.dec_rnn(inp.transpose(1,2), z)
-  
-        dec_out = self.dec_conv_layers(dec_out.transpose(1,2))
-        
+        dec_out, _ = self.dec_rnn(inp, z)
+        dec_out = self.dec_conv_layers(dec_out.transpose(1, 2))
         return dec_out
 
     @staticmethod

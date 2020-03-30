@@ -6,11 +6,28 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 
+
 def MSE_loss(pre, tar):
-	loss_func = nn.MSELoss()
-	pre = torch.sigmoid(pre)
-	loss = loss_func(pre, tar)
-	return loss
+    loss_func = nn.MSELoss()
+    pre = torch.sigmoid(pre)
+    loss = loss_func(pre, tar)
+    return loss
+
+
+def compute_kld_loss(z_dist, prior_dist, beta, c=0.0):
+    """
+
+    :param z_dist: torch.distributions object
+    :param prior_dist: torch.distributions
+    :param beta: weight for kld loss
+    :param c: capacity of bottleneck channel
+    :return: kl divergence loss
+    """
+    kld = torch.distributions.kl.kl_divergence(z_dist, prior_dist)
+    kld = kld.sum(1).mean()
+    kld = beta * (kld - c).abs()
+    return kld
+
 
 def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     # Load pitch contours
@@ -30,6 +47,7 @@ def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     SC = dill.load(open(mid_file, 'rb')) # all scores / aligned midi
 
     return trPC, vaPC, SC
+
 
 class Data2Torch(Dataset):
     def __init__(self, data, midi_op = 'aligned'):

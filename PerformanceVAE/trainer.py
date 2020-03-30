@@ -1,11 +1,12 @@
-from lib import *
+from PerformanceVAE.lib import *
 import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
 from tensorboard_logger import configure, log_value
 
+
 class Trainer:
-    def __init__(self, model, lr, epoch, save_fn):
+    def __init__(self, model, lr, epoch, save_fn, beta=0.1):
         """
         Class for implementing an trainer
         """
@@ -13,6 +14,7 @@ class Trainer:
         self.model = model
         self.lr = lr
         self.save_fn = save_fn
+        self.beta = beta
 
         print('Start Training #Epoch:%d'%(epoch))
 
@@ -54,13 +56,23 @@ class Trainer:
 
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
-                #predict latent vectors 
+                # predict latent vectors
                 vae_out = self.model(pitch)
                 
-                #calculate loss
+                # calculate reconstruction loss
                 loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
+
+                # calculate performance loss
                 loss_score = MSE_loss(vae_out[1].squeeze(), target.reshape(-1))
-                (loss_reconstruct + loss_score).backward()
+
+                # calculate latent loss
+                dist_loss = compute_kld_loss(
+                    vae_out[2], vae_out[3], beta=self.beta
+                )
+
+                # add losses and optimize
+                total_loss = loss_reconstruct + loss_score + dist_loss
+                total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
                 loss_train_score += loss_score
@@ -70,17 +82,17 @@ class Trainer:
             loss_valid_score = 0
             self.model.eval()
             with torch.no_grad():
-	            for batch_idx, _input in enumerate(va_loader):
-	                pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
-	                
-	                #predict latent vectors 
-	                vae_out = self.model(pitch)
-	                
-	                #calculate loss
-	                loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
-                	loss_score = MSE_loss(vae_out[1].squeeze(), target.reshape(-1))
-	                loss_valid_recon += loss_reconstruct
-                	loss_valid_score += loss_score
+                for batch_idx, _input in enumerate(va_loader):
+                    pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
+
+                    #predict latent vectors
+                    vae_out = self.model(pitch)
+
+                    #calculate loss
+                    loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
+                    loss_score = MSE_loss(vae_out[1].squeeze(), target.reshape(-1))
+                    loss_valid_recon += loss_reconstruct
+                    loss_valid_score += loss_score
 
             # print model result
             sys.stdout.write('\r')
