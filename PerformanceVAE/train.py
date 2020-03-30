@@ -19,7 +19,7 @@ batch_size = 16
 num_workers = 2 # fixed
 shuffle = True # fixed
 epoch = 1000 # fixed
-lr = 0.001
+lr = 0.01
 
 loss_func = 'Similarity'
 process_collate = 'randomChunk' # 'randomChunk', 'windowChunk', 'padding'

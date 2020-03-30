@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 def MSE_loss(pre, tar):
     loss_func = nn.MSELoss()
-    pre = torch.sigmoid(pre)
+    #pre = torch.sigmoid(pre)
     loss = loss_func(pre, tar)
     return loss
 

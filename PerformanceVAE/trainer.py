@@ -1,4 +1,4 @@
-from PerformanceVAE.lib import *
+from lib import *
 import torch.optim as optim
 import time, sys, torch
 from torch.autograd import Variable
@@ -50,6 +50,7 @@ class Trainer:
             # Training
             loss_train_recon = 0
             loss_train_score = 0
+            loss_train_KL = 0
             self.model.train()
             for batch_idx, _input in enumerate(tr_loader):
                 self.model.zero_grad()  
@@ -58,7 +59,6 @@ class Trainer:
                 
                 # predict latent vectors
                 vae_out = self.model(pitch)
-                
                 # calculate reconstruction loss
                 loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
 
@@ -69,13 +69,13 @@ class Trainer:
                 dist_loss = compute_kld_loss(
                     vae_out[2], vae_out[3], beta=self.beta
                 )
-
                 # add losses and optimize
                 total_loss = loss_reconstruct + loss_score + dist_loss
                 total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
                 loss_train_score += loss_score
+                loss_train_KL += dist_loss
 
             # Validate
             loss_valid_recon = 0
@@ -96,8 +96,8 @@ class Trainer:
 
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Train recon %2.4f  Train score %2.4f  Valid score %2.4f  Valid score %2.4f  Time %d'
-                    %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
+            sys.stdout.write('| Epoch [%3d/%3d] Train recon %2.3f  Train score %2.3f  Train KL %2.3f  Valid score %2.3f  Valid score %2.3f  Time %d'
+                    %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_train_KL/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
             sys.stdout.flush()
 
             # log data for visualization later

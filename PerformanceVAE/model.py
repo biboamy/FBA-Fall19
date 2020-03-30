@@ -110,7 +110,7 @@ class PCPerformanceVAE(nn.Module):
         # compute output of decoding layer
         # create input for decoder rnn
         dec_lstm_in = self.dec_in_linear(z_tilde).unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
-        output = self.decode(z_tilde.unsqueeze(0), dec_lstm_in).view(input_size)
+        output = self.decode(z_tilde.unsqueeze(0), dec_lstm_in).view(input_tensor.size())
 
         return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
 
