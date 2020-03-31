@@ -19,7 +19,7 @@ class PCPerformanceVAE(nn.Module):
         self.conv_stride = 3
         self.num_conv_features = 4
         self.num_recurrent_layers = 2
-        self.z_dim = 32
+        self.z_dim = 16
         self.n_layers = 1
 
         # define the different convolutional modules
@@ -50,10 +50,10 @@ class PCPerformanceVAE(nn.Module):
         self.enc_log_std = nn.Linear(2 * self.z_dim, self.z_dim)
 
         # define linear layer for input to decoder rnn
-        self.dec_in_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
+        self.dec_out_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
         # define decoder recurrent layer
         self.dec_rnn = nn.GRU(
-            self.z_dim, 8 * self.num_conv_features, self.n_layers, batch_first=True
+            self.z_dim, self.z_dim, self.n_layers, batch_first=True
         )
         # define decoder conv layers
         self.dec_conv_layers = nn.Sequential(
@@ -109,7 +109,7 @@ class PCPerformanceVAE(nn.Module):
 
         # compute output of decoding layer
         # create input for decoder rnn
-        dec_lstm_in = self.dec_in_linear(z_tilde).unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
+        dec_lstm_in = z_tilde.unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
         output = self.decode(z_tilde.unsqueeze(0), dec_lstm_in).view(input_tensor.size())
 
         return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
@@ -132,6 +132,7 @@ class PCPerformanceVAE(nn.Module):
 
     def decode(self, z, inp):
         dec_out, _ = self.dec_rnn(inp, z)
+        dec_out = self.dec_out_linear(dec_out)
         dec_out = self.dec_conv_layers(dec_out.transpose(1, 2))
         return dec_out
 
