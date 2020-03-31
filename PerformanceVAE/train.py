@@ -1,10 +1,10 @@
 import os, torch
-from model import PCPerformanceVAE
-from trainer import *
+from PerformanceVAE.model import PCPerformanceVAE
+from PerformanceVAE.trainer import *
 from functools import partial
 import numpy as np
 import random
-from lib import *
+from PerformanceVAE.lib import *
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
 
 # DO NOT change the default values if possible
@@ -16,15 +16,15 @@ midi_op = 'aligned_s'  # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
 
 # training parameters
 batch_size = 16
-num_workers = 2 # fixed
-shuffle = True # fixed
-epoch = 1000 # fixed
+num_workers = 2  # fixed
+shuffle = True  # fixed
+epoch = 1000  # fixed
 lr = 0.01
 
 loss_func = 'Similarity'
-process_collate = 'randomChunk' # 'randomChunk', 'windowChunk', 'padding'
-sample_num = 2 # numbers of chunks # if choosing windowChunk, sample_num has to be 1
-chunk_size = 2000 # 1000 ~ 5 sec / 2000 ~ 10 sec
+process_collate = 'randomChunk'  # 'randomChunk', 'windowChunk', 'padding'
+sample_num = 2  # numbers of chunks # if choosing windowChunk, sample_num has to be 1
+chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
 
 torch.backends.cudnn.enabled = False 
 torch.backends.cudnn.benchmark = False
@@ -84,8 +84,8 @@ def main():
             model.cuda()    
 
         # start training (function inside train_utils.py)
-        Trer = Trainer(model, lr, epoch, out_model_fn)
-        Trer.fit(tr_loader, va_loader)
+        trainer = Trainer(model, lr, epoch, out_model_fn)
+        trainer.fit(tr_loader, va_loader)
 
         print(model_name)
 

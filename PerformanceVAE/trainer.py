@@ -1,8 +1,12 @@
-from lib import *
+import datetime
+import os
 import torch.optim as optim
-import time, sys, torch
+import sys
+import time
 from torch.autograd import Variable
+from tensorboardX import SummaryWriter
 from tensorboard_logger import configure, log_value
+from PerformanceVAE.lib import *
 
 
 class Trainer:
@@ -15,34 +19,29 @@ class Trainer:
         self.lr = lr
         self.save_fn = save_fn
         self.beta = beta
+        self.writer = None
 
         print('Start Training #Epoch:%d'%(epoch))
 
-        # declare save file name
-        file_info = 'tensorlog'
-
-        import datetime
-
+        # configure tensorboardX summary writer
         current = datetime.datetime.now()
-
-       # configure tensor-board logger
-        # e.g. model_name_10:28:01:54
-        configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
+        self.writer = SummaryWriter(
+            logdir=os.path.join('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"))
+        )
 
     def fit(self, tr_loader, va_loader):
         st = time.time()
 
-        #define object
-        save_dict = {}
+        # define object
+        save_dict = dict()
         save_dict['tr_loss'] = []
         best_loss = 1000000000
 
         for e in range(1, self.epoch+1):
-            #learning rate (learning rate decay during training process)
+            # learning rate (learning rate decay during training process)
             lr = self.lr / (((e//(70*1))*2)+1) 
-            loss_total = 0
             self.model.train()
-            print( '\n==> Training Epoch #%d lr=%4f'%(e, lr))
+            print('\n==> Training Epoch #%d lr=%4f'%(e, lr))
 
             # optimizer
             opt = optim.SGD(self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
@@ -50,7 +49,7 @@ class Trainer:
             # Training
             loss_train_recon = 0
             loss_train_score = 0
-            loss_train_KL = 0
+            loss_train_kld = 0
             self.model.train()
             for batch_idx, _input in enumerate(tr_loader):
                 self.model.zero_grad()  
@@ -60,10 +59,10 @@ class Trainer:
                 # predict latent vectors
                 vae_out = self.model(pitch)
                 # calculate reconstruction loss
-                loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
+                loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
 
                 # calculate performance loss
-                loss_score = MSE_loss(vae_out[1].squeeze(), target.reshape(-1))
+                loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
 
                 # calculate latent loss
                 dist_loss = compute_kld_loss(
@@ -75,7 +74,7 @@ class Trainer:
                 opt.step()
                 loss_train_recon += loss_reconstruct
                 loss_train_score += loss_score
-                loss_train_KL += dist_loss
+                loss_train_kld += dist_loss
 
             # Validate
             loss_valid_recon = 0
@@ -89,20 +88,27 @@ class Trainer:
                     vae_out = self.model(pitch)
 
                     #calculate loss
-                    loss_reconstruct = MSE_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
-                    loss_score = MSE_loss(vae_out[1].squeeze(), target.reshape(-1))
+                    loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
+                    loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
                     loss_valid_recon += loss_reconstruct
                     loss_valid_score += loss_score
 
             # print model result
             sys.stdout.write('\r')
             sys.stdout.write('| Epoch [%3d/%3d] Train recon %2.3f  Train score %2.3f  Train KL %2.3f  Valid score %2.3f  Valid score %2.3f  Time %d'
-                    %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_train_KL/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
+                    %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_train_kld/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
             sys.stdout.flush()
 
             # log data for visualization later
-            #log_value('train_loss', loss_train, e)
-            #log_value('val_loss', loss_val, e)
+            # log_value('train_loss', loss_train, e)
+            # log_value('val_loss', loss_val, e)
+
+            # log value in tensorboardX for visualization
+            self.writer.add_scalar('loss/train_recons', loss_train_recon, e)
+            self.writer.add_scalar('loss/train_score', loss_train_score, e)
+            self.writer.add_scalar('loss/train_kld', loss_train_kld, e)
+            self.writer.add_scalar('loss/valid_recons', loss_valid_recon, e)
+            self.writer.add_scalar('loss/valid_score', loss_valid_score, e)
 
             # save model
             if (loss_valid_score) < best_loss:
