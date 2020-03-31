@@ -1,10 +1,11 @@
 import os, torch
-from PerformanceVAE.model import PCPerformanceVAE
-from PerformanceVAE.trainer import *
 from functools import partial
 import numpy as np
 import random
-from PerformanceVAE.lib import *
+from model import PCPerformanceVAE
+from trainer import *
+from lib import *
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
 
 # DO NOT change the default values if possible

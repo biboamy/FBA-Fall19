@@ -6,7 +6,7 @@ import time
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 from tensorboard_logger import configure, log_value
-from PerformanceVAE.lib import *
+from lib import *
 
 
 class Trainer:
@@ -39,7 +39,7 @@ class Trainer:
 
         for e in range(1, self.epoch+1):
             # learning rate (learning rate decay during training process)
-            lr = self.lr / (((e//(70*1))*2)+1) 
+            lr = self.lr / (((e//(70*1))*2)+1)
             self.model.train()
             print('\n==> Training Epoch #%d lr=%4f'%(e, lr))
 
