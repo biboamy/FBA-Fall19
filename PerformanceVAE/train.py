@@ -27,6 +27,14 @@ process_collate = 'randomChunk'  # 'randomChunk', 'windowChunk', 'padding'
 sample_num = 2  # numbers of chunks # if choosing windowChunk, sample_num has to be 1
 chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
 
+# model parameters
+dropout_prob = 0.5
+num_rec_layers = 2
+z_dim = 16
+kernel_size = 7
+stride = 3
+num_conv_features = 4
+
 torch.backends.cudnn.enabled = False 
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
@@ -80,7 +88,14 @@ def main():
                                                 **t_kwargs)
   
         # build model (function inside model.py)
-        model = PCPerformanceVAE()
+        model = PCPerformanceVAE(
+            dropout_prob=dropout_prob,
+            z_dim=z_dim,
+            kernel_size=kernel_size,
+            stride=stride,
+            num_rec_layers=num_rec_layers,
+            num_conv_features=num_conv_features
+        )
         if torch.cuda.is_available():
             model.cuda()    
 
@@ -104,9 +119,15 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=batch_size)
     parser.add_argument("--sample_num", type=int, default=sample_num)
     parser.add_argument("--chunk_size", type=int, default=chunk_size)
+    parser.add_argument("--num_rec_layers", type=int, default=num_rec_layers)
+    parser.add_argument("--z_dim", type=int, default=z_dim)
+    parser.add_argument("--kernel_size", type=int, default=kernel_size)
+    parser.add_argument("--stride", type=int, default=stride)
+    parser.add_argument("--num_conv_features", type=int, default=num_conv_features)
 
     # float
     parser.add_argument("--lr", type=float, default=lr)
+    parser.add_argument("--dropout_prob", type=float, default=dropout_prob)
 
     args = parser.parse_args()
 
@@ -118,5 +139,10 @@ if __name__ == "__main__":
     sample_num = args.sample_num
     chunk_size = args.chunk_size
     lr = args.lr
+    num_rec_layers = args.num_rec_layers
+    z_dim = args.z_dim
+    kernel_size = args.kernel_size
+    stride = args.stride
+    num_conv_features = args.num_conv_features
 
     main()

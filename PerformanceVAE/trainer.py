@@ -65,16 +65,16 @@ class Trainer:
                 loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
 
                 # calculate latent loss
-                dist_loss = compute_kld_loss(
+                loss_kld = compute_kld_loss(
                     vae_out[2], vae_out[3], beta=self.beta
                 )
                 # add losses and optimize
-                total_loss = loss_reconstruct + loss_score + dist_loss
+                total_loss = loss_reconstruct + loss_kld + loss_score
                 total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
                 loss_train_score += loss_score
-                loss_train_kld += dist_loss
+                loss_train_kld += loss_kld
 
             # Validate
             loss_valid_recon = 0
@@ -104,11 +104,12 @@ class Trainer:
             # log_value('val_loss', loss_val, e)
 
             # log value in tensorboardX for visualization
-            self.writer.add_scalar('loss/train_recons', loss_train_recon, e)
-            self.writer.add_scalar('loss/train_score', loss_train_score, e)
-            self.writer.add_scalar('loss/train_kld', loss_train_kld, e)
-            self.writer.add_scalar('loss/valid_recons', loss_valid_recon, e)
-            self.writer.add_scalar('loss/valid_score', loss_valid_score, e)
+            self.writer.add_scalar('loss/train_recons', loss_train_recon/len(tr_loader), e)
+            self.writer.add_scalar('loss/train_score', loss_train_score/len(tr_loader), e)
+            self.writer.add_scalar('loss/train_kld', loss_train_kld/len(tr_loader), e)
+            self.writer.add_scalar('loss/valid_recons', loss_valid_recon/len(tr_loader), e)
+            self.writer.add_scalar('loss/valid_score', loss_valid_score/len(tr_loader), e)
+            self.writer.add_scalar('lr', lr, e)
 
             # save model
             if (loss_valid_score) < best_loss:

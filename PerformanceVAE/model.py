@@ -9,18 +9,25 @@ class PCPerformanceVAE(nn.Module):
     contours
     """
 
-    def __init__(self, dropout_prob=0.5):
+    def __init__(
+            self,
+            dropout_prob=0.5,
+            z_dim=16,
+            kernel_size=7,
+            stride=3,
+            num_rec_layers=2,
+            num_conv_features=4
+    ):
         """
         Initialized the network
         """
         super(PCPerformanceVAE, self).__init__()
         # initialize interal parameters
-        self.conv_kernel_size = 7
-        self.conv_stride = 3
-        self.num_conv_features = 4
-        self.num_recurrent_layers = 2
-        self.z_dim = 16
-        self.n_layers = 1
+        self.conv_kernel_size = kernel_size
+        self.conv_stride = stride
+        self.num_conv_features = num_conv_features
+        self.z_dim = z_dim
+        self.num_recurrent_layers = num_rec_layers
 
         # define the different convolutional modules
         self.enc_conv_layers = nn.Sequential(
@@ -43,7 +50,7 @@ class PCPerformanceVAE(nn.Module):
         )
         # define encoder recurrent layer
         self.enc_rnn = nn.GRU(
-            8 * self.num_conv_features, 2 * self.z_dim, self.n_layers, batch_first=True
+            8 * self.num_conv_features, 2 * self.z_dim, self.num_recurrent_layers, batch_first=True
         )
         # define encoder mean and variance layers
         self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
@@ -53,7 +60,7 @@ class PCPerformanceVAE(nn.Module):
         self.dec_out_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
         # define decoder recurrent layer
         self.dec_rnn = nn.GRU(
-            self.z_dim, self.z_dim, self.n_layers, batch_first=True
+            self.z_dim, self.z_dim, self.num_recurrent_layers, batch_first=True
         )
         # define decoder conv layers
         self.dec_conv_layers = nn.Sequential(
@@ -158,6 +165,6 @@ class PCPerformanceVAE(nn.Module):
         Args:
                 mini_batch_size:    number of data samples in the mini-batch
         """
-        self.hidden = Variable(torch.zeros(self.n_layers, mini_batch_size, 2 * self.z_dim))
+        self.hidden = Variable(torch.zeros(self.num_recurrent_layers, mini_batch_size, 2 * self.z_dim))
         if torch.cuda.is_available():
             self.hidden = self.hidden.cuda()
