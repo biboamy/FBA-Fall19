@@ -20,7 +20,7 @@ batch_size = 16
 num_workers = 2  # fixed
 shuffle = True  # fixed
 epoch = 1000  # fixed
-lr = 0.01
+lr = 1e-3
 
 loss_func = 'Similarity'
 process_collate = 'randomChunk'  # 'randomChunk', 'windowChunk', 'padding'
@@ -29,11 +29,11 @@ chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
 
 # model parameters
 dropout_prob = 0.5
-num_rec_layers = 1
-z_dim = 16
+num_rec_layers = 2
+z_dim = 32
 kernel_size = 7
 stride = 3
-num_conv_features = 4
+num_conv_features = 8
 
 torch.backends.cudnn.enabled = False 
 torch.backends.cudnn.benchmark = False

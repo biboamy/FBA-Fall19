@@ -5,8 +5,8 @@ import sys
 import time
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-from tensorboard_logger import configure, log_value
 from lib import *
+from eval import evaluate_classification, evaluate_model
 
 
 class Trainer:
@@ -54,6 +54,7 @@ class Trainer:
             for batch_idx, _input in enumerate(tr_loader):
                 self.model.zero_grad()  
 
+                # prepare inputs
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
                 # predict latent vectors
@@ -82,16 +83,20 @@ class Trainer:
             self.model.eval()
             with torch.no_grad():
                 for batch_idx, _input in enumerate(va_loader):
+                    # prepare inputs
                     pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
 
-                    #predict latent vectors
+                    # predict latent vectors
                     vae_out = self.model(pitch)
 
-                    #calculate loss
+                    # calculate loss
                     loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
                     loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
                     loss_valid_recon += loss_reconstruct
                     loss_valid_score += loss_score
+
+                # evaluate performance
+                rsq, acc, corr, pval = evaluate_model(self.model, va_loader)
 
             # print model result
             sys.stdout.write('\r')
@@ -107,8 +112,12 @@ class Trainer:
             self.writer.add_scalar('loss/train_recons', loss_train_recon/len(tr_loader), e)
             self.writer.add_scalar('loss/train_score', loss_train_score/len(tr_loader), e)
             self.writer.add_scalar('loss/train_kld', loss_train_kld/len(tr_loader), e)
-            self.writer.add_scalar('loss/valid_recons', loss_valid_recon/len(tr_loader), e)
-            self.writer.add_scalar('loss/valid_score', loss_valid_score/len(tr_loader), e)
+            self.writer.add_scalar('loss/valid_recons', loss_valid_recon/len(va_loader), e)
+            self.writer.add_scalar('loss/valid_score', loss_valid_score/len(va_loader), e)
+            self.writer.add_scalar('metrics/r_squared', rsq, e)
+            self.writer.add_scalar('metrics/accuracy', acc, e)
+            self.writer.add_scalar('metrics/correlation', corr, e)
+            self.writer.add_scalar('metrics/p_value', pval, e)
             self.writer.add_scalar('lr', lr, e)
 
             # save model

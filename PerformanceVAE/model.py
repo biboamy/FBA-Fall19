@@ -109,7 +109,6 @@ class PCPerformanceVAE(nn.Module):
                     seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
         """
         # get mini batch size from input and reshape input
-        input_size = input_tensor.size()
         input_tensor = input_tensor.reshape(-1, input_tensor.shape[-1])
         mini_batch_size, zero_pad_len = input_tensor.size()
 
@@ -140,7 +139,7 @@ class PCPerformanceVAE(nn.Module):
             if 'weight' in name:
                 nan_check = torch.isnan(param.data)
                 if nan_check.nonzero().size(0) > 0:
-                    print('Encoder has become nan')
+                    print(f'Layer {name} has become nan')
                     raise ValueError
 
         # compute the output of the convolutional layer
