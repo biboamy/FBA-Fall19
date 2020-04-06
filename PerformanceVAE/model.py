@@ -53,8 +53,8 @@ class PCPerformanceVAE(nn.Module):
             8 * self.num_conv_features, 2 * self.z_dim, self.num_recurrent_layers, batch_first=True
         )
         # define encoder mean and variance layers
-        self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
-        self.enc_log_std = nn.Linear(2 * self.z_dim, self.z_dim)
+        self.enc_mean = nn.Linear(2 * self.z_dim * self.num_recurrent_layers, self.z_dim)
+        self.enc_log_std = nn.Linear(2 * self.z_dim * self.num_recurrent_layers, self.z_dim)
 
         # define linear layer for input to decoder rnn
         self.dec_out_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
@@ -88,6 +88,17 @@ class PCPerformanceVAE(nn.Module):
             nn.Linear(self.z_dim*5, 1)
         )
 
+        self.xavier_initialization()
+
+    def xavier_initialization(self):
+        """
+        Initializes the network params
+        :return:
+        """
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_normal_(param)
+
     def forward(self, input_tensor):
         """
         Defines the forward pass of the PitchContourAssessor module
@@ -101,8 +112,7 @@ class PCPerformanceVAE(nn.Module):
         input_size = input_tensor.size()
         input_tensor = input_tensor.reshape(-1, input_tensor.shape[-1])
         mini_batch_size, zero_pad_len = input_tensor.size()
-        # initialize the hidden state
-        self.init_hidden(mini_batch_size=mini_batch_size)
+
         # reshape input
         input_tensor = input_tensor.view(mini_batch_size, 1, zero_pad_len)
 
@@ -114,21 +124,35 @@ class PCPerformanceVAE(nn.Module):
         # compute performance score from latent code
         performance_score = self.classifier(z_tilde)  # batch x 1
 
-        # compute output of decoding layer
+        # DECODE
         # create input for decoder rnn
         dec_lstm_in = z_tilde.unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
-        output = self.decode(z_tilde.unsqueeze(0), dec_lstm_in).view(input_tensor.size())
+        # create hidden state for decoder rnn
+        dec_hidden = z_tilde.unsqueeze(0).repeat([self.num_recurrent_layers, 1, 1])
+        # pass through decoder
+        output = self.decode(dec_hidden, dec_lstm_in).view(input_tensor.size())
 
         return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
 
     def encode(self, x):
+        # NAN Check
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nan_check = torch.isnan(param.data)
+                if nan_check.nonzero().size(0) > 0:
+                    print('Encoder has become nan')
+                    raise ValueError
+
         # compute the output of the convolutional layer
         conv_out = self.enc_conv_layers(x).transpose(1, 2)
-        seq_len = conv_out.shape[1]
+        batch_size, seq_len, _ = conv_out.size()
         # compute the output of the lstm layer
         # transpose to ensure sequence length is dim 1 now
+        # initialize the hidden state
+        self.init_hidden(mini_batch_size=batch_size)
         _, hidden = self.enc_rnn(conv_out, self.hidden)
-        hidden = torch.squeeze(hidden, 0)
+        hidden = hidden.transpose(0, 1).contiguous()
+        hidden = hidden.view(batch_size, -1)
         # compute the mean and variance
         z_mean = self.enc_mean(hidden)
         z_log_std = self.enc_log_std(hidden)
@@ -137,8 +161,8 @@ class PCPerformanceVAE(nn.Module):
         z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
         return z_distribution, seq_len
 
-    def decode(self, z, inp):
-        dec_out, _ = self.dec_rnn(inp, z)
+    def decode(self, dec_hidden, dec_gru_inp):
+        dec_out, _ = self.dec_rnn(dec_gru_inp, dec_hidden)
         dec_out = self.dec_out_linear(dec_out)
         dec_out = self.dec_conv_layers(dec_out.transpose(1, 2))
         return dec_out

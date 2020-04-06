@@ -29,7 +29,7 @@ chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
 
 # model parameters
 dropout_prob = 0.5
-num_rec_layers = 2
+num_rec_layers = 1
 z_dim = 16
 kernel_size = 7
 stride = 3
