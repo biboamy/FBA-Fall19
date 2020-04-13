@@ -29,9 +29,10 @@ def evaluate_model(model, dataloader):
     all_predictions = []
     all_targets = []
     for i, (_input) in enumerate(dataloader):
-        matrix, target = Variable(_input[0].cuda()), Variable(_input[1].cuda())
-        pred = model(matrix.unsqueeze(1))
+        pitch, target = Variable(_input[0].cuda()), Variable(_input[2].cuda())
+        pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1)
+        pred = model(pitch)[1]
         all_predictions.extend(pred.squeeze(1).data.cpu().numpy())
-        all_targets.extend(target.data.cpu().numpy())
+        all_targets.extend(target.reshape(-1).data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 

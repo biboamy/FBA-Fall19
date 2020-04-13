@@ -33,19 +33,19 @@ class PCPerformanceVAE(nn.Module):
         self.enc_conv_layers = nn.Sequential(
             # define the 1st convolutional layer (batch, ncf, 665)
             nn.Conv1d(1, self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 2nd convolutional layer (batch, ncf, 220)
             nn.Conv1d(self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 3rd convolutional layer (batch, ncf, 72)
             nn.Conv1d(2 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 4th convolutional layer (batch, ncf, 22)
             nn.Conv1d(4 * self.num_conv_features, 8 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
         )
         # define encoder recurrent layer
@@ -66,26 +66,27 @@ class PCPerformanceVAE(nn.Module):
         self.dec_conv_layers = nn.Sequential(
             # define the 1st convolutional layer
             nn.ConvTranspose1d(8 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=2),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 2nd convolutional layer
             nn.ConvTranspose1d(4 * self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 3rd convolutional layer
             nn.ConvTranspose1d(2 * self.num_conv_features, self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=1),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 4th convolutional layer
             nn.ConvTranspose1d(self.num_conv_features, 1, self.conv_kernel_size, self.conv_stride, output_padding=1),
-            nn.ReLU(),
+            nn.SELU(),
             nn.Dropout(p=dropout_prob),
         )
 
         self.classifier = nn.Sequential(
             nn.Linear(self.z_dim, self.z_dim*5),
-            nn.ReLU(),
-            nn.Linear(self.z_dim*5, 1)
+            nn.SELU(),
+            nn.Linear(self.z_dim*5, 1),
+            nn.SELU()
         )
 
         self.xavier_initialization()

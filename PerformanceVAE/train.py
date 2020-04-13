@@ -1,4 +1,5 @@
-import os, torch
+import os
+import torch
 from functools import partial
 import numpy as np
 import random
@@ -85,7 +86,7 @@ def main():
                                                 **t_kwargs)
         va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), worker_init_fn=np.random.seed(manualSeed), \
                                                 collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
-                                                **t_kwargs)
+                                                **v_kwargs)
   
         # build model (function inside model.py)
         model = PCPerformanceVAE(

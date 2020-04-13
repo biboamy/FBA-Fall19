@@ -55,8 +55,10 @@ class Trainer:
                 self.model.zero_grad()  
 
                 # prepare inputs
-                pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
-                
+                pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
+                pitch = pitch.view(pitch.shape[0]*pitch.shape[1], -1).unsqueeze(1)
+                score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
+
                 # predict latent vectors
                 vae_out = self.model(pitch)
                 # calculate reconstruction loss
@@ -70,7 +72,7 @@ class Trainer:
                     vae_out[2], vae_out[3], beta=self.beta
                 )
                 # add losses and optimize
-                total_loss = loss_reconstruct + loss_kld + loss_score
+                total_loss = 1e-4 * loss_reconstruct + loss_score + loss_kld
                 total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
@@ -85,6 +87,8 @@ class Trainer:
                 for batch_idx, _input in enumerate(va_loader):
                     # prepare inputs
                     pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
+                    pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1)
+                    score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
 
                     # predict latent vectors
                     vae_out = self.model(pitch)
@@ -100,7 +104,7 @@ class Trainer:
 
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Train recon %2.3f  Train score %2.3f  Train KL %2.3f  Valid score %2.3f  Valid score %2.3f  Time %d'
+            sys.stdout.write('| Epoch [%3d/%3d] Train Recons %2.3f  Train Score %2.3f  Train KL %2.3f  Valid Recons %2.3f  Valid Score %2.3f  Time %d'
                     %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_train_kld/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
             sys.stdout.flush()
 
@@ -116,8 +120,8 @@ class Trainer:
             self.writer.add_scalar('loss/valid_score', loss_valid_score/len(va_loader), e)
             self.writer.add_scalar('metrics/r_squared', rsq, e)
             self.writer.add_scalar('metrics/accuracy', acc, e)
-            self.writer.add_scalar('metrics/correlation', corr, e)
-            self.writer.add_scalar('metrics/p_value', pval, e)
+            # self.writer.add_scalar('metrics/correlation', corr, e)
+            # self.writer.add_scalar('metrics/p_value', pval, e)
             self.writer.add_scalar('lr', lr, e)
 
             # save model
