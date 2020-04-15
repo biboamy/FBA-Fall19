@@ -8,11 +8,12 @@ import pypianoroll
 import pretty_midi
 import h5py
 from scipy.signal import decimate
+import matplotlib.pyplot as plt
 import time
 from tqdm import tqdm
 
 # Initialize input params, specify the band, intrument, segment information
-BAND = ['symphonic']
+BAND = ['middle']
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
 YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
@@ -45,7 +46,7 @@ def load_data(band='middle', midi_op='res12'):
     PC = np.array(dill.load(open(pc_file, 'rb')))
 
     # Read scores from .dill files
-    mid_file = PATH_FBA_MIDI + '{}_2_midi_{}_6.dill'.format(band, midi_op)
+    mid_file = PATH_FBA_MIDI + '{}_2_midi_{}_{}.dill'.format(band, midi_op, len(YEAR))
     SC = dill.load(open(mid_file, 'rb'))  # all scores / aligned midi
 
     return PC, SC
@@ -83,7 +84,7 @@ def simpleDTW(D):
     return np.array(path)
 
 
-def computeDistanceMatrixAndAlignment(perf):
+def computeDistanceMatrixAndAlignment(perf, SC):
 
     #print(perf['year'], perf['student_id'])
     try:
@@ -134,7 +135,7 @@ def computeDistanceMatrixAndAlignment(perf):
             if st >= pc.shape[0]:
                 break
             ed = st + 1
-            while (ed < pc.shape[0] and alignment[ed] == -1):
+            while ed < pc.shape[0] and alignment[ed] == -1:
                 ed = ed + 1
             lin_st = 0
             lin_ed = 0
@@ -156,7 +157,6 @@ def computeDistanceMatrixAndAlignment(perf):
         # replace the values in the matrix
         D[np.ix_(silence_sc, ~silence_pc)] = p
         D[np.ix_(~silence_sc, silence_pc)] = p
-        D[np.ix_(silence_sc, silence_pc)] = p
 
         D = D.astype(np.float16)
         perf['matrix'] = D
@@ -166,87 +166,129 @@ def computeDistanceMatrixAndAlignment(perf):
         fail_list.append(perf)
     return perf
 
+def compute_mat_aln_for_all():
+    # create data holder
+    matrix_data = []
+    from joblib import Parallel, delayed
+    # instantiate the data utils object for different instruments and create the data
+    for band in BAND:
+        PC, SC = load_data(band=band, midi_op=midi_op)
+        print(len(PC))
+        p = total_num[band]
+        for i in np.arange(len(p)-1):
+            print(i)
+            del matrix_data
+            start = time.time()
+            matrix_data = Parallel(n_jobs=cpu_num)(delayed(computeDistanceMatrixAndAlignment)(perf, SC) for perf in tqdm(PC[p[i]:p[i+1]]))
+            stop = time.time()
+            print('Elapsed time for the entire processing: {:.2f} s'
+                  .format(stop - start))
+            print('{} to {}'.format(p[i], p[i+1]))
 
-# create data holder
-matrix_data = []
-from joblib import Parallel, delayed
-# instantiate the data utils object for different instruments and create the data
-for band in BAND:
-    PC, SC = load_data(band=band, midi_op=midi_op)
-    print(len(PC))
-    p = total_num[band]
-    for i in np.arange(len(p)-1):
-        print(i)
-        del matrix_data
-        start = time.time()
-        matrix_data = Parallel(n_jobs=cpu_num)(delayed(computeDistanceMatrixAndAlignment)(perf) for perf in tqdm(PC[p[i]:p[i+1]]))
-        stop = time.time()
-        print('Elapsed time for the entire processing: {:.2f} s'
-              .format(stop - start))
-        print('{} to {}'.format(p[i], p[i+1]))
+            file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(len(YEAR)) + "_" + str(i)
+            with open(PATH_FBA_MTX + file_name + '.dill', 'wb') as f:
+                dill.dump(matrix_data, f)
 
-        file_name = band + '_' + str(SEGMENT) + '_matrix_r_' + str(len(YEAR)) + "_" + str(i)
-        with open(PATH_FBA_MTX + file_name + '.dill', 'wb') as f:
-            dill.dump(matrix_data, f)
+        with open(PATH_FBA_MTX + '{}_fail_list.dill'.format(band), 'wb') as f:
+            dill.dump(fail_list, f)
 
-    with open(PATH_FBA_MTX + '{}_fail_list.dill'.format(band), 'wb') as f:
-        dill.dump(fail_list, f)
 
-# band = 'middle'
+def combine_h5(band):
+    # save matrix to an h5py file
+    sc_dim = 1320 # middle: 1320; symphonic: 1548
+    pc_dim = 8000# middle: 7000; symphonic: 7174
+    cnt = 0
 
-# save matrix to an h5py file
-# sc_dim = 500
-# pc_dim = 6931
-# cnt = 0
-#
-# f = h5py.File('../data/matrix/{}_{}_6_matrix.h5'.format(band, SEGMENT), 'w')
-# f.create_dataset('matrix', (0, pc_dim), maxshape=(None, pc_dim))
-# f.create_dataset('sc_idx', (0, 3), maxshape=(None, 3)) # (i, j, k) -> f['matrix'][i:j, 0:k]
-# id2idx = {'2013':{}, '2014':{}, '2015':{}, '2016':{}, '2017':{}, '2018':{}}
-#
-# ds_mtx = f['matrix']
-# ds_scidx = f['sc_idx']
-#
-# def write_incre_h5(dataset, datapoint):
-#     dataset.resize(dataset.shape[0]+datapoint.shape[0],axis=0)
-#     dataset[-datapoint.shape[0]:,:] = datapoint
-#
-# for i in np.arange(len(total_num[band])-1):
-#     file_name = band + '_' + str(SEGMENT) + '_matrix_3_' + str(i)
-#     tmpdillfile = '../data/matrix/' + file_name + '.dill'
-#     print(tmpdillfile)
-#     performance = np.array(dill.load(open(tmpdillfile, 'rb')))
-#     for perf in performance:
-#         if 'matrix' not in perf.keys():
-#             print(perf['year'], perf['student_id'])
-#             continue
-#         # get max dim
-#         mtx_cur = perf['matrix']
-#
-#         id2idx[perf['year']][perf['student_id']] = cnt
-#
-#         sc_dim_i, pc_dim_i = mtx_cur.shape
-#         if sc_dim_i > sc_dim:
-#             sc_dim = sc_dim_i
-#         if pc_dim_i > pc_dim:
-#             pc_dim = pc_dim_i
-#         continue
-#
-#         i, j, k = ds_mtx.shape[0], ds_mtx.shape[0]+sc_dim_i, pc_dim_i
-#         write_incre_h5(ds_scidx, np.array([[i, j, k]]))
-#         # padding
-#         mtx_cur = np.pad(mtx_cur, ((0,0),(0,pc_dim-pc_dim_i)), 'constant', constant_values=0)
-#         assert mtx_cur.shape[1] == pc_dim
-#         write_incre_h5(ds_mtx, mtx_cur)
-#         assert ds_mtx.shape[0] == j
-#
-#         cnt = cnt + 1
-#
-# print(sc_dim, pc_dim)
-# print("write {} matrices.".format(cnt))
-# f.close()
-#
-# print(id2idx)
-# with open('/home/data_share/FBA/fall19/data/matrix/' + band + '_id2idx.dill', 'wb') as f:
-#     dill.dump(id2idx, f)
+    f = h5py.File(PATH_FBA_MTX + '{}_{}_{}_matrix.h5'.format(band, SEGMENT, len(YEAR)), 'w')
+    f.create_dataset('matrix', (0, pc_dim), maxshape=(None, pc_dim), dtype=np.float16)
+    f.create_dataset('sc_idx', (0, 3), maxshape=(None, 3), dtype=np.int) # (i, j, k) -> f['matrix'][i:j, 0:k]
+    id2idx = {'2013':{}, '2014':{}, '2015':{}, '2016':{}, '2017':{}, '2018':{}}
 
+    ds_mtx = f['matrix']
+    ds_scidx = f['sc_idx']
+
+    def write_incre_h5(dataset, datapoint):
+        dataset.resize(dataset.shape[0]+datapoint.shape[0],axis=0)
+        dataset[-datapoint.shape[0]:,:] = datapoint
+
+    for i_inter in np.arange(len(total_num[band])-1):
+        file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(len(YEAR)) + '_' + str(i_inter)
+        tmpdillfile = PATH_FBA_MTX + file_name + '.dill'
+        print(tmpdillfile)
+        performance = np.array(dill.load(open(tmpdillfile, 'rb')))
+        for perf in performance:
+            if 'matrix' not in perf.keys() or 'alignment' not in perf.keys():
+                print(perf['year'], perf['student_id'])
+                continue
+            # get max dim
+            mtx_cur = perf['matrix']
+
+            sc_dim_i, pc_dim_i = mtx_cur.shape
+
+            if pc_dim_i > pc_dim:
+                continue
+            #
+            # if sc_dim_i > sc_dim:
+            #     sc_dim = sc_dim_i
+            # if pc_dim_i > pc_dim:
+            #     pc_dim = pc_dim_i
+            # continue
+
+            id2idx[perf['year']][perf['student_id']] = cnt
+
+            i, j, k = ds_mtx.shape[0], ds_mtx.shape[0]+sc_dim_i, pc_dim_i
+            write_incre_h5(ds_scidx, np.array([[i, j, k]]))
+            # padding
+            mtx_cur = np.pad(mtx_cur, ((0,0),(0,pc_dim-pc_dim_i)), 'constant', constant_values=0)
+            assert mtx_cur.shape[1] == pc_dim
+            write_incre_h5(ds_mtx, mtx_cur)
+            assert ds_mtx.shape[0] == j
+
+            cnt = cnt + 1
+
+    print(sc_dim, pc_dim)
+    print("write {} matrices.".format(cnt))
+    f.close()
+
+    print(id2idx)
+    with open(PATH_FBA_MTX + band + '_id2idx_' + str(len(YEAR)) + '.dill', 'wb') as f:
+        dill.dump(id2idx, f)
+
+def combine_alignment(band):
+    # then create a .dill file without {audio, matrix} and with {alignment}
+    alignment_midi = {}
+
+    # read midis for that year
+    mid_file = '{}{}_2_midi_{}_{}.dill'.format(PATH_FBA_MIDI, band, midi_op, str(len(YEAR)))
+    scores = dill.load(open(mid_file, 'rb'))
+
+    alignment_dill = {}
+    alignment_dill['scores'] = scores
+
+    for y in YEAR:
+        alignment_midi[y] = {}
+
+    for i in np.arange(len(total_num[band])-1):
+        file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(len(YEAR)) + '_' + str(i)
+        tmpdillfile = PATH_FBA_MTX + file_name + '.dill'
+        print(tmpdillfile)
+        performance = np.array(dill.load(open(tmpdillfile, 'rb')))
+        for perf in performance:
+            if 'alignment' not in perf.keys():
+                print(perf['year'], perf['student_id'])
+                continue
+            #assert(perf['pitch_contour'].shape[0] == perf['alignment'].shape[0])
+            alignment_midi[perf['year']][perf['student_id']] = perf['alignment']
+
+    alignment_dill['alignment'] = alignment_midi
+
+    with open('{}{}_2_midi_aligned_s_{}.dill'.format(PATH_FBA_MIDI, band, str(len(YEAR))), 'wb') as f:
+        dill.dump(alignment_dill, f)
+
+# compute all bands in BAND
+compute_mat_aln_for_all()
+
+# specify the band
+combine_h5('middle')
+
+combine_alignment('middle')

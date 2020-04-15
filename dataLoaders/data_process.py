@@ -75,11 +75,11 @@ for band in BAND:
 
     print(file_name)
     if os.uname()[0] == 'Linux':
-        with open('../data/midi/' + file_name + '.dill', 'wb') as f:
+        with open(PATH_FBA_MIDI + file_name + '.dill', 'wb') as f:
             dill.dump(midi_score, f)
         #scipy.io.savemat('../data/midi/' + file_name + '.mat', mdict={'perf_data': midi_score})
     else:
-        with open('../data/midi/' + file_name + '_' + str(len(YEAR)) + '.dill', 'wb') as f:
+        with open(PATH_FBA_MIDI + file_name + '_' + str(len(YEAR)) + '.dill', 'wb') as f:
             dill.dump(midi_score, f)
 
 
