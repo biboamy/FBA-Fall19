@@ -56,8 +56,8 @@ class Trainer:
 
                 # prepare inputs
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
-                pitch = pitch.view(pitch.shape[0]*pitch.shape[1], -1).unsqueeze(1)
-                score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
+                pitch = pitch.view(pitch.shape[0]*pitch.shape[1], -1).unsqueeze(1) / 13289.7503226
+                score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1) / 128.0
 
                 # predict latent vectors
                 vae_out = self.model(pitch)
@@ -72,7 +72,7 @@ class Trainer:
                     vae_out[2], vae_out[3], beta=self.beta
                 )
                 # add losses and optimize
-                total_loss = 1e-4 * loss_reconstruct + loss_score + loss_kld
+                total_loss = loss_reconstruct + loss_score + loss_kld
                 total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
@@ -87,8 +87,8 @@ class Trainer:
                 for batch_idx, _input in enumerate(va_loader):
                     # prepare inputs
                     pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
-                    pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1)
-                    score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
+                    pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1) / 13289.7503226
+                    score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1) / 128.0
 
                     # predict latent vectors
                     vae_out = self.model(pitch)
