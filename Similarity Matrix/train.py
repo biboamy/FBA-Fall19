@@ -15,7 +15,7 @@ torch.backends.cudnn.deterministic = True
 def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    for i in range(0,1):
+    for i in range(0,12):
         manualSeed = i
         np.random.seed(manualSeed)
         random.seed(manualSeed)
