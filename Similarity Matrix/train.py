@@ -57,6 +57,18 @@ def main():
         print(model_name)
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--band", type=str, default=band)
+    parser.add_argument("--split", type=str, default=split)
+    parser.add_argument("--score_choose", type=str, default=score_choose)
+
+    args = parser.parse_args()
+
+    band = args.band
+    split = args.split
+    score_choose = args.score_choose
 
     main()
-    print(manualSeed)
