@@ -1,25 +1,29 @@
 import numpy as np
-import torch, json
+import sys
+import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 
-def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='sec'):
+from config import *
+
+def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='res12'):
     # find missing alignedmidi
 
     import dill
-    pc_file = '../../data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3.dill'.format(band)
+    pc_file = PATH_FBA_DILL + data_all_pc.format(band)
     all_PC = np.array(dill.load(open(pc_file, 'rb')))
 
-    mid_file = '../../data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
+    mid_file = PATH_FBA_MIDI + midi_aligned_s.format(band)
     SC = dill.load(open(mid_file, 'rb'))  # all scores / aligned midi
 
     missing_list = []
     for i in np.arange(all_PC.shape[0]):
+        inst = all_PC[i]['instrumemt']
         year = all_PC[i]['year']
         id_PC = all_PC[i]['student_id']
-        if str(id_PC) not in SC[year].keys():
-            missing_list.append('{}.{}'.format(year, id_PC))
+        if id_PC not in SC['alignment'][year].keys():
+            missing_list.append((year, id_PC))
 
     print(missing_list)
 
@@ -31,15 +35,13 @@ def load_data(band='middle', feat='pitch contour', midi_op='sec'):
     import dill
     assert(feat=='pitch contour')
 
-    # Read features from .dill files
-    pc_file = '/home/data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # train
-    trPC = np.array(dill.load(open(pc_file + 'train.dill', 'rb')))
+    trPC = np.array(dill.load(open(PATH_FBA_SPLIT + data_train_pc[split].format(band), 'rb')))
     # valid
-    vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
+    vaPC = np.array(dill.load(open(PATH_FBA_SPLIT + data_valid_pc[split].format(band), 'rb')))
 
     # Read scores from .dill files
-    mid_file = '/home/data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
+    mid_file = PATH_FBA_MIDI + midi_aligned_s.format(band)
     SC = dill.load(open(mid_file, 'rb')) # all scores / aligned midi
 
     return trPC, vaPC, SC
@@ -50,19 +52,20 @@ def load_test_data(band='middle', feat='pitch contour'):
     import dill
     assert(feat=='pitch contour')
 
-    # Read features from .dill files
-    pc_file = '/home/data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # test
-    tePC = np.array(dill.load(open(pc_file + 'test.dill', 'rb')))
+    tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
 
     return tePC
 
 class Data2Torch(Dataset):
-    def __init__(self, data, midi_op = 'aligned'):
+    def __init__(self, data, midi_op = 'aligned_s'):
         self.xPC = data[0]
         self.xSC = data[1]
         self.midi_op = midi_op
         self.resample = False
+
+        assert midi_op == 'aligned_s'
+
         if midi_op == 'resize':
             self.resample = True
 
@@ -77,7 +80,7 @@ class Data2Torch(Dataset):
         mXPC = torch.from_numpy(PC).float()
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)     
+        mY = mY[score_choose] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
 
         if self.midi_op in ['sec', 'beat', 'resize']:
             # musical score
@@ -116,7 +119,7 @@ class Data2Torch(Dataset):
             SC =  self.xSC[instrument][year]
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
-            align = self.align[year][str(id)]
+            align = self.align[year][id]
             oup = [mXPC, mXSC, mY, align]
 
         else:
@@ -157,7 +160,7 @@ def my_collate(collate_params, batch):
                 pc.append(data[0][start:start+c_size].view(1,c_size))
 
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][start]), np.floor(data[3][start+c_size]))
+                    idx = np.arange(np.floor(data[3][np.int(start/5)]), np.floor(data[3][np.int((start+c_size)/5)]+1))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]
@@ -183,7 +186,7 @@ def my_collate(collate_params, batch):
             for j in range(size):
                 pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][j*c_size]), np.floor(data[3][j*c_size+c_size]))
+                    idx = np.arange(np.floor(data[3][np.int(j*c_size/5)]), np.floor(data[3][np.int((j*c_size+c_size)/5)]+1))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]
@@ -230,7 +233,7 @@ def test_collate(collate_params, batch):
             for j in range(size):
                 pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][j*c_size]), np.floor(data[3][j*c_size+c_size]))
+                    idx = np.arange(np.floor(data[3][np.int(j*c_size/5)]), np.floor(data[3][np.int((j*c_size+c_size)/5)]+1))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]
@@ -244,7 +247,8 @@ def test_collate(collate_params, batch):
 
             pc.append(data[0][-c_size:].view(1,c_size))
             if len(data)>3:
-                idx = np.arange(np.floor(data[3][len(data[0])-c_size-2]), np.floor(data[3][len(data[0])-2]))
+                idx = np.arange(np.floor(data[3][np.int((len(data[0])-c_size-2) / 5)]),
+                                np.floor(data[3][np.int((len(data[0])-2) / 5)] + 1))
                 idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                 tmpsc = data[1][idx]
@@ -331,3 +335,5 @@ def get_weight(Ytr):
     cc[3]=1
     inverse_feq = torch.from_numpy(cc)
     return inverse_feq
+
+check_missing_alignedmidi("symphonic")

@@ -18,7 +18,7 @@ INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
 YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
 
-dill_name = {'middle': 'middle_2_new_dataPC.dill', 'symphonic': 'symphonic_2_data_new2.dill'}
+dill_name = {'middle': 'middle_2_pc_6.dill', 'symphonic': 'symphonic_2_pc_6.dill'}
 total_num = {'middle': np.array([0, 523, 1046, 1569, 2092, 2616]), 'symphonic': np.array([0, 304, 608, 912, 1216, 1520, 1824, 2128, 2432, 2736, 3040])}
 
 feat = 'pitch contour'
@@ -285,10 +285,10 @@ def combine_alignment(band):
     with open('{}{}_2_midi_aligned_s_{}.dill'.format(PATH_FBA_MIDI, band, str(len(YEAR))), 'wb') as f:
         dill.dump(alignment_dill, f)
 
-# compute all bands in BAND
-compute_mat_aln_for_all()
-
-# specify the band
-combine_h5('middle')
-
-combine_alignment('middle')
+# # compute all bands in BAND
+# compute_mat_aln_for_all()
+#
+# # specify the band
+# combine_h5('middle')
+#
+# combine_alignment('middle')

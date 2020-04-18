@@ -1,8 +1,8 @@
 from lib import loss_func
 import torch.optim as optim
-import time, sys, torch
+import os, time, sys, torch
 from torch.autograd import Variable
-from tensorboard_logger import configure, log_value
+from tensorboardX import SummaryWriter
 from sklearn import metrics
 
 class Trainer:
@@ -17,16 +17,13 @@ class Trainer:
 
         print('Start Training #Epoch:%d'%(epoch))
 
-        # declare save file name
-        file_info = 'tensorlog'
-
-        # configure tensor-board logger
         import datetime
 
+        # configure tensorboardX summary writer
         current = datetime.datetime.now()
-
-        # configure tensor-board logger
-        #configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
+        self.writer = SummaryWriter(
+            logdir=os.path.join('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"))
+        )
 
     def fit(self, tr_loader, va_loader, device):
         st = time.time()
@@ -101,8 +98,9 @@ class Trainer:
             #print ('\n')
 
             # log data for visualization later
-            #log_value('train_loss', loss_train, e)
-            #log_value('val_loss', loss_val, e)
+            # log data for visualization later
+            self.writer.add_scalar('train_loss', loss_train, e)
+            self.writer.add_scalar('val_loss', loss_val, e)
 
             # save model
             if loss_val < best_loss:

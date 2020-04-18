@@ -23,8 +23,8 @@ else:
     cpu_num = 5
 
 def generate_newdata_newsplit():
-    dill_name = {'middle': 'middle_2_new_dataPC.dill', 'symphonic': 'symphonic_2_data_new2.dill'}
-    total_name = {'middle':1410, 'symphonic': 2616}
+    dill_name = {'middle': 'middle_2_pc_6_fix.dill', 'symphonic': 'symphonic_2_pc_6.dill'}
+    total_name = {'middle':2611, 'symphonic': 3036}
 
     np.random.seed(1)
 
@@ -32,6 +32,7 @@ def generate_newdata_newsplit():
 
     perf_data = dill.load(open(data_path, 'rb'))
     perf_data = np.array(perf_data)
+    print(len(perf_data))
     ind = np.arange(total_name[band])
     np.random.shuffle(ind)
 
@@ -39,8 +40,8 @@ def generate_newdata_newsplit():
     num_valid = int(total * 0.1)
     num_train = int(0.8 * total)
 
-    for i in range(num_train):
-        print(perf_data[ind[i]]['student_id'])
+    # for i in range(num_train):
+    #     print(perf_data[ind[i]]['student_id'])
 
     train_data = perf_data[ind[0:num_train]]
     valid_data = perf_data[ind[num_train:num_train + num_valid]]
@@ -54,8 +55,8 @@ def generate_newdata_newsplit():
         dill.dump(valid_data, f)
 
 def generate_newdata_oldsplit(): # only middle school
-    PATH_FBA_DILL_OLD = '/media/SSD/FBA/fall19/data/pitch_contour/'
-    newdill_name = PATH_FBA_DILL + 'middle_2_new_dataPC.dill'
+    PATH_FBA_DILL_OLD = '/media/Data/fall19/data/pitch_contour/'
+    newdill_name = PATH_FBA_DILL + 'middle_2_pc_6_fix.dill'
     oldsplit_dill_name = {'train': 'middle_2_pc_3_train.dill', 'valid': 'middle_2_pc_3_valid.dill', 'test': 'middle_2_pc_3_test.dill'}
 
     np.random.seed(1)
@@ -98,11 +99,13 @@ def generate_newdata_oldsplit(): # only middle school
     valid_data = perf_data_all_new[np.array(valid_idx).astype(int)]
     test_data = perf_data_all_new[np.array(test_idx).astype(int)]
 
-    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, len(YEAR)), 'wb') as f:
+    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
         dill.dump(train_data, f)
-    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, len(YEAR)), 'wb') as f:
+    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
         dill.dump(test_data, f)
-    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, len(YEAR)), 'wb') as f:
+    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
         dill.dump(valid_data, f)
 
-generate_newdata_newsplit()
+# generate_newdata_newsplit()
+
+generate_newdata_oldsplit()
