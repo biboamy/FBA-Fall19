@@ -336,4 +336,4 @@ def get_weight(Ytr):
     inverse_feq = torch.from_numpy(cc)
     return inverse_feq
 
-check_missing_alignedmidi("symphonic")
+# check_missing_alignedmidi("symphonic")

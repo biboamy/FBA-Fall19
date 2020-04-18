@@ -9,9 +9,9 @@ split = "new" # old: 2013~2015, new: 2013~2018
 
 data_all_pc = "{}_2_pc_6_fix.dill"
 
-data_train_mtx = "{}_matrix_fixed_train{}.dill"
-data_valid_mtx = "{}_matrix_fixed_valid{}.dill"
-data_test_mtx = "{}_matrix_fixed_test{}.dill"
+data_train_mtx = {"old": "{}_matrix_fixed_train{}_oldsplit.dill", "new": "{}_matrix_fixed_train{}.dill"}
+data_valid_mtx = {"old": "{}_matrix_fixed_valid{}_oldsplit.dill", "new": "{}_matrix_fixed_valid{}.dill"}
+data_test_mtx = {"old": "{}_matrix_fixed_test{}_oldsplit.dill", "new": "{}_matrix_fixed_test{}.dill"}
 
 # training parameters
 batch_size = 32

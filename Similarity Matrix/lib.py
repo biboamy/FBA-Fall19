@@ -11,9 +11,9 @@ def load_data(band='middle'):
     # Currently only allow pitch contour as feature
 
     # train
-    trPC = dill.load(open(PATH_FBA_MTX + data_train_mtx.format(band, matrix_dim), 'rb'))
+    trPC = dill.load(open(PATH_FBA_MTX + data_train_mtx[split].format(band, matrix_dim), 'rb'))
     # valid
-    vaPC = dill.load(open(PATH_FBA_MTX + data_valid_mtx.format(band, matrix_dim), 'rb'))
+    vaPC = dill.load(open(PATH_FBA_MTX + data_valid_mtx[split].format(band, matrix_dim), 'rb'))
 
     return trPC, vaPC
 
@@ -22,7 +22,7 @@ def load_test_data(matrix_path, band='middle'):
     # Currently only allow pitch contour as feature
 
     # Read features from .dill files
-    tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx.format(band, matrix_dim), 'rb'))
+    tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
 
     return tePC
 
