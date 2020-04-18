@@ -2,8 +2,9 @@ import os, torch, random
 from model import Net_Fixed
 from train_utils import Trainer
 from lib import load_data, Data2Torch
-from config import *
 import numpy as np
+
+from config import *
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
 
@@ -23,7 +24,11 @@ def main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
-        model_name = '{}_{}_batch{}_lr{}_{}'.format(model_choose, matrix_dim, batch_size, lr, manualSeed)
+        model_name = '{}_{}_batch{}_lr{}_{}{}_{}'.format(model_choose, matrix_dim, batch_size, lr, band, split, manualSeed)
+
+        print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch,
+                                                                                        lr, model_name))
+        print('band: {}, split: {}, matrix_dim: {}'.format(band, split, matrix_dim))
 
         # model saving path
         from datetime import date
@@ -33,8 +38,7 @@ def main():
             os.makedirs(out_model_fn)
 
         # load training and validation data (function inside lib.py)
-        matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
-        trPC, vaPC = load_data(matrix_path)
+        trPC, vaPC = load_data(band)
        
         # prepare dataloader (function inside lib.py)
         t_kwargs = {'batch_size': batch_size, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}

@@ -1,8 +1,9 @@
 from lib import distance_loss
 import torch.optim as optim
-import time, sys, torch
+import os, time, sys, torch
 from torch.autograd import Variable
-from tensorboard_logger import configure, log_value
+from tensorboardX import SummaryWriter
+from sklearn import metrics
 
 class Trainer:
     def __init__(self, model, lr, epoch, save_fn):
@@ -13,6 +14,7 @@ class Trainer:
         self.model = model
         self.lr = lr
         self.save_fn = save_fn
+        self.writer = None
 
         print('Start Training #Epoch:%d'%(epoch))
 
@@ -21,11 +23,11 @@ class Trainer:
 
         import datetime
 
+        # configure tensorboardX summary writer
         current = datetime.datetime.now()
-
-        # configure tensor-board logger
-        # e.g. model_name_10:28:01:54
-        #configure('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"), flush_secs=2)
+        self.writer = SummaryWriter(
+            logdir=os.path.join('runs/' + save_fn.split('/')[-2] + '_' + current.strftime("%m:%d:%H:%M"))
+        )
 
     def fit(self, tr_loader, va_loader):
         st = time.time()
@@ -61,8 +63,11 @@ class Trainer:
                 opt.step()
                 loss_train += loss
 
+            loss_train = loss_train / len(tr_loader)
+
             # Validate
             loss_val = 0
+            self.model.eval()
             for batch_idx, _input in enumerate(va_loader):
                 pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
                 
@@ -71,7 +76,9 @@ class Trainer:
                 
                 #calculate loss
                 loss_val += distance_loss(pitch_v, score_v, target.reshape(-1)) [0]
-                    
+
+            loss_val = loss_val / len(va_loader)
+
             # print model result
             sys.stdout.write('\r')
             sys.stdout.write('| Epoch [%3d/%3d] Loss_train %4f  Loss_val %4f  Time %d'
@@ -79,8 +86,8 @@ class Trainer:
             sys.stdout.flush()
 
             # log data for visualization later
-            #log_value('train_loss', loss_train, e)
-            #log_value('val_loss', loss_val, e)
+            self.writer.add_scalar('train_loss', loss_train, e)
+            self.writer.add_scalar('val_loss', loss_val, e)
 
             # save model
             if loss_val < best_loss:

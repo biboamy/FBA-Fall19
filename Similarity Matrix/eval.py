@@ -1,13 +1,13 @@
 from sklearn import metrics
 from model import Net_Fixed
 from lib import load_data, load_test_data, Data2Torch
-import os, torch, random
+import os, torch
 from torch.autograd import Variable
-from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
-from config import *
 import statistics
+
+from config import *
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
 
@@ -42,9 +42,8 @@ def evaluate_model(model, dataloader):
 
 def main(model_name_e):
 
-    matrix_path = '../../../data_share/FBA/fall19/data/matrix/'
-    trPC, vaPC = load_data(matrix_path)
-    tePC = load_test_data(matrix_path)
+    trPC, vaPC = load_data(band)
+    tePC = load_test_data(band)
 
     kwargs = {'batch_size': batch_size, 'pin_memory': True}
     #kwargs = {'pin_memory': True}
@@ -55,6 +54,8 @@ def main(model_name_e):
     tr = []
     va = []
     te = []
+
+    print(model_name_e)
 
     for i in range(0, 12):
         if True:
@@ -98,7 +99,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--model_name_e", type=str, help="model name e.g. 20191028/testmodel")
+    parser.add_argument("--model_name_e", type=str, default=model_name_e, help="model name e.g. 20191028/testmodel")
 
     args = parser.parse_args()
 
