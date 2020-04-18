@@ -5,8 +5,8 @@ import sys
 import time
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
-from tensorboard_logger import configure, log_value
 from lib import *
+from eval import evaluate_classification, evaluate_model
 
 
 class Trainer:
@@ -54,8 +54,11 @@ class Trainer:
             for batch_idx, _input in enumerate(tr_loader):
                 self.model.zero_grad()  
 
-                pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
-                
+                # prepare inputs
+                pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
+                pitch = pitch.view(pitch.shape[0]*pitch.shape[1], -1).unsqueeze(1) / 13289.7503226
+                score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1) / 128.0
+
                 # predict latent vectors
                 vae_out = self.model(pitch)
                 # calculate reconstruction loss
@@ -65,16 +68,16 @@ class Trainer:
                 loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
 
                 # calculate latent loss
-                dist_loss = compute_kld_loss(
+                loss_kld = compute_kld_loss(
                     vae_out[2], vae_out[3], beta=self.beta
                 )
                 # add losses and optimize
-                total_loss = loss_reconstruct + loss_score + dist_loss
+                total_loss = loss_reconstruct + loss_score + loss_kld
                 total_loss.backward()
                 opt.step()
                 loss_train_recon += loss_reconstruct
                 loss_train_score += loss_score
-                loss_train_kld += dist_loss
+                loss_train_kld += loss_kld
 
             # Validate
             loss_valid_recon = 0
@@ -82,20 +85,26 @@ class Trainer:
             self.model.eval()
             with torch.no_grad():
                 for batch_idx, _input in enumerate(va_loader):
+                    # prepare inputs
                     pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda()),
+                    pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1) / 13289.7503226
+                    score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1) / 128.0
 
-                    #predict latent vectors
+                    # predict latent vectors
                     vae_out = self.model(pitch)
 
-                    #calculate loss
+                    # calculate loss
                     loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
                     loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
                     loss_valid_recon += loss_reconstruct
                     loss_valid_score += loss_score
 
+                # evaluate performance
+                rsq, acc, corr, pval = evaluate_model(self.model, va_loader)
+
             # print model result
             sys.stdout.write('\r')
-            sys.stdout.write('| Epoch [%3d/%3d] Train recon %2.3f  Train score %2.3f  Train KL %2.3f  Valid score %2.3f  Valid score %2.3f  Time %d'
+            sys.stdout.write('| Epoch [%3d/%3d] Train Recons %2.3f  Train Score %2.3f  Train KL %2.3f  Valid Recons %2.3f  Valid Score %2.3f  Time %d'
                     %(e, self.epoch, loss_train_recon/len(tr_loader), loss_train_score/len(tr_loader), loss_train_kld/len(tr_loader), loss_valid_recon/len(va_loader), loss_valid_score/len(va_loader), time.time() - st))
             sys.stdout.flush()
 
@@ -104,11 +113,16 @@ class Trainer:
             # log_value('val_loss', loss_val, e)
 
             # log value in tensorboardX for visualization
-            self.writer.add_scalar('loss/train_recons', loss_train_recon, e)
-            self.writer.add_scalar('loss/train_score', loss_train_score, e)
-            self.writer.add_scalar('loss/train_kld', loss_train_kld, e)
-            self.writer.add_scalar('loss/valid_recons', loss_valid_recon, e)
-            self.writer.add_scalar('loss/valid_score', loss_valid_score, e)
+            self.writer.add_scalar('loss/train_recons', loss_train_recon/len(tr_loader), e)
+            self.writer.add_scalar('loss/train_score', loss_train_score/len(tr_loader), e)
+            self.writer.add_scalar('loss/train_kld', loss_train_kld/len(tr_loader), e)
+            self.writer.add_scalar('loss/valid_recons', loss_valid_recon/len(va_loader), e)
+            self.writer.add_scalar('loss/valid_score', loss_valid_score/len(va_loader), e)
+            self.writer.add_scalar('metrics/r_squared', rsq, e)
+            self.writer.add_scalar('metrics/accuracy', acc, e)
+            # self.writer.add_scalar('metrics/correlation', corr, e)
+            # self.writer.add_scalar('metrics/p_value', pval, e)
+            self.writer.add_scalar('lr', lr, e)
 
             # save model
             if (loss_valid_score) < best_loss:
