@@ -7,8 +7,16 @@ import numpy as np
 band = "middle"
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
-YEAR = ['2013', '2014', '2015']
-postfix = "_oldsplit" # new: "", old: "_oldsplit"
+
+split = "old"
+if split == "old":
+    YEAR = ['2013', '2014', '2015']
+    postfix = "_oldsplit" # new: "", old: "_oldsplit"
+else:
+    assert split == "new"
+    YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
+    postfix = ""
+
 num_year_all = 6
 
 if os.uname()[1] == 'mig1':

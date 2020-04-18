@@ -18,7 +18,7 @@ torch.backends.cudnn.deterministic = True
 
 def main():
 
-    for i in range(1,12):
+    for i in range(0,12):
 
         manualSeed = i
         np.random.seed(manualSeed)

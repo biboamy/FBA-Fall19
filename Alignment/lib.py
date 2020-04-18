@@ -29,7 +29,7 @@ def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='res1
 
     return missing_list
 
-def load_data(band='middle', feat='pitch contour', midi_op='sec'):
+def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
     import dill
