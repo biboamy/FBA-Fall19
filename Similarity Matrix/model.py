@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-from config import *
+
 
 class block(nn.Module):
     def __init__(self, inp, out):

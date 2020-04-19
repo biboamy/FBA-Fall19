@@ -6,7 +6,10 @@ from torch.autograd import Variable
 from functools import partial
 import numpy as np
 from scipy.stats import pearsonr
-os.environ['CUDA_VISIBLE_DEVICES'] = '1' 
+
+from config import *
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def evaluate_classification(targets, predictions):
     #print(targets.max(),targets.min(),predictions.max(),predictions.min())
@@ -40,19 +43,10 @@ def evaluate_model(model, dataloader):
 # DO NOT change the default values if possible
 # except during DEBUGGING
 
-band = 'middle'
-feat = 'pitch contour'
-midi_op = 'aligned_s' # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
-num_workers = 4
-model_choose = 'CNN'
-
-overlap_flag = False
-chunk_size = 1000
-
 def main():
     train_metrics, val_metrics, test_metrics = [], [], []
-    for i in range(0,10):
-        model_name = '202039/Similarity_batch16_lr0.001_midialigned_s_windowChunk_sample1_chunksize1000_CNN_'+str(i)
+    for i in range(0,12):
+        model_name = '2020418/Similarity_batch32_lr0.05_midialigned_s_randomChunk_sample2_chunksize2000_CRNN_new_'+str(i)
 
         # if resize the midi to fit the length of audio
         resample = False

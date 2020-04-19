@@ -1,11 +1,10 @@
-import dill
-import numpy as np
 import numpy as np
 import torch, json
 import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 
+from config import *
 
 def mse_loss(pre, tar):
     loss_func = nn.MSELoss()
@@ -29,22 +28,20 @@ def compute_kld_loss(z_dist, prior_dist, beta, c=0.0):
     return kld
 
 
-def load_data(band='middle', feat='pitch contour', midi_op='sec'):
+def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
     import dill
     assert(feat=='pitch contour')
 
-    # Read features from .dill files
-    pc_file = '/home/data_share/FBA/fall19/data/pitch_contour/{}_2_pc_3_'.format(band)
     # train
-    trPC = np.array(dill.load(open(pc_file + 'train.dill', 'rb')))
+    trPC = np.array(dill.load(open(PATH_FBA_SPLIT + data_train_pc[split].format(band), 'rb')))
     # valid
-    vaPC = np.array(dill.load(open(pc_file + 'valid.dill', 'rb')))
+    vaPC = np.array(dill.load(open(PATH_FBA_SPLIT + data_valid_pc[split].format(band), 'rb')))
 
     # Read scores from .dill files
-    mid_file = '/home/data_share/FBA/fall19/data/midi/{}_2_midi_{}_3.dill'.format(band, midi_op)
-    SC = dill.load(open(mid_file, 'rb')) # all scores / aligned midi
+    mid_file = PATH_FBA_MIDI + midi_aligned_s.format(band)
+    SC = dill.load(open(mid_file, 'rb'))  # all scores / aligned midi
 
     return trPC, vaPC, SC
 
@@ -55,6 +52,9 @@ class Data2Torch(Dataset):
         self.xSC = data[1]
         self.midi_op = midi_op
         self.resample = False
+
+        assert midi_op == 'aligned_s'
+
         if midi_op == 'resize':
             self.resample = True
 
@@ -69,7 +69,7 @@ class Data2Torch(Dataset):
         mXPC = torch.from_numpy(PC).float()
         # ratings
         mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[0] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)     
+        mY = mY[score_choose] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
 
         if self.midi_op in ['sec', 'beat', 'resize']:
             # musical score
@@ -108,7 +108,7 @@ class Data2Torch(Dataset):
             SC =  self.xSC[instrument][year]
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
-            align = self.align[year][str(id)]
+            align = self.align[year][id]
             oup = [mXPC, mXSC, mY, align]
 
         else:
@@ -149,7 +149,7 @@ def my_collate(collate_params, batch):
                 pc.append(data[0][start:start+c_size].view(1,c_size))
 
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][start]), np.floor(data[3][start+c_size]))
+                    idx = np.arange(np.floor(data[3][np.int(start/5)]), np.floor(data[3][np.int((start+c_size)/5)]+1))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]
@@ -175,7 +175,7 @@ def my_collate(collate_params, batch):
             for j in range(size):
                 pc.append(data[0][j*c_size:j*c_size+c_size].view(1,c_size))
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][j*c_size]), np.floor(data[3][j*c_size+c_size]))
+                    idx = np.arange(np.floor(data[3][np.int(j*c_size/5)]), np.floor(data[3][np.int((j*c_size+c_size)/5)]+1))
                     idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
                     tmpsc = data[1][idx]

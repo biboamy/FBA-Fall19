@@ -9,32 +9,10 @@ from lib import *
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
 
+from config import *
+
 # DO NOT change the default values if possible
 # except during DEBUGGING
-
-band = 'middle'  # fixed
-feat = 'pitch contour'  # fixed
-midi_op = 'aligned_s'  # 'sec', 'beat', 'resize', 'aligned', 'aligned_s'
-
-# training parameters
-batch_size = 16
-num_workers = 2  # fixed
-shuffle = True  # fixed
-epoch = 1000  # fixed
-lr = 1e-3
-
-loss_func = 'Similarity'
-process_collate = 'randomChunk'  # 'randomChunk', 'windowChunk', 'padding'
-sample_num = 2  # numbers of chunks # if choosing windowChunk, sample_num has to be 1
-chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
-
-# model parameters
-dropout_prob = 0.5
-num_rec_layers = 2
-z_dim = 32
-kernel_size = 7
-stride = 3
-num_conv_features = 8
 
 torch.backends.cudnn.enabled = False 
 torch.backends.cudnn.benchmark = False
@@ -43,7 +21,7 @@ torch.backends.cudnn.deterministic = True
 
 def main():
 
-    for i in range(0,10):
+    for i in range(0,12):
 
         manualSeed = i
         np.random.seed(manualSeed)
@@ -53,9 +31,9 @@ def main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
-        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}'.format(loss_func, batch_size, lr, midi_op, \
+        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}{}_{}'.format(model_choose, batch_size, lr, midi_op, \
                                                                                 process_collate, sample_num, chunk_size, \
-                                                                                manualSeed)
+                                                                                band, split, manualSeed)
         # 'Similarity_batch16_lr0.001_midialigneds_windowChunk1sample10sec_CNN'
 
         print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
@@ -112,9 +90,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--loss_func", type=str, default=loss_func)
     parser.add_argument("--midi_op", type=str, default=midi_op)
     parser.add_argument("--process_collate", type=str, default=process_collate)
+
+    parser.add_argument("--band", type=str, default=band)
+    parser.add_argument("--split", type=str, default=split)
+    parser.add_argument("--score_choose", type=str, default=score_choose)
 
     # int
     parser.add_argument("--batch_size", type=int, default=batch_size)
@@ -133,9 +114,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # overwrite params
-    loss_func = args.loss_func
     midi_op = args.midi_op
     process_collate = args.process_collate
+    band = args.band
+    split = args.split
+    score_choose = args.score_choose
     batch_size = args.batch_size
     sample_num = args.sample_num
     chunk_size = args.chunk_size
