@@ -1,6 +1,7 @@
 import torch
 from torch import nn, distributions
 from torch.autograd import Variable
+from collections import OrderedDict
 
 
 class PCPerformanceVAE(nn.Module):
@@ -14,7 +15,6 @@ class PCPerformanceVAE(nn.Module):
             dropout_prob=0.5,
             z_dim=16,
             kernel_size=7,
-            stride=3,
             num_rec_layers=2,
             num_conv_features=4
     ):
@@ -24,9 +24,11 @@ class PCPerformanceVAE(nn.Module):
         super(PCPerformanceVAE, self).__init__()
         # initialize interal parameters
         self.conv_kernel_size = kernel_size
-        self.conv_stride = stride
+        self.conv_stride = 1
         self.num_conv_features = num_conv_features
         self.z_dim = z_dim
+        self.z_assess = self.z_dim // 8
+        self.z_score = self.z_dim - self.z_assess
         self.num_recurrent_layers = num_rec_layers
 
         # define the different convolutional modules
@@ -57,35 +59,38 @@ class PCPerformanceVAE(nn.Module):
         self.enc_log_std = nn.Linear(2 * self.z_dim * self.num_recurrent_layers, self.z_dim)
 
         # define linear layer for input to decoder rnn
-        self.dec_out_linear = nn.Linear(self.z_dim, 8 * self.num_conv_features)
+        self.dec_out_linear = nn.Linear(self.z_score, 8 * self.num_conv_features)
         # define decoder recurrent layer
         self.dec_rnn = nn.GRU(
-            self.z_dim, self.z_dim, self.num_recurrent_layers, batch_first=True
+            self.z_score, self.z_score, self.num_recurrent_layers, batch_first=True
         )
         # define decoder conv layers
         self.dec_conv_layers = nn.Sequential(
             # define the 1st convolutional layer
-            nn.ConvTranspose1d(8 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=2),
+            nn.ConvTranspose1d(8 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size,
+                               self.conv_stride),
             nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 2nd convolutional layer
-            nn.ConvTranspose1d(4 * self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.ConvTranspose1d(4 * self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size,
+                               self.conv_stride),
             nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 3rd convolutional layer
-            nn.ConvTranspose1d(2 * self.num_conv_features, self.num_conv_features, self.conv_kernel_size, self.conv_stride, output_padding=1),
+            nn.ConvTranspose1d(2 * self.num_conv_features, self.num_conv_features, self.conv_kernel_size,
+                               self.conv_stride),
             nn.SELU(),
             nn.Dropout(p=dropout_prob),
             # define the 4th convolutional layer
-            nn.ConvTranspose1d(self.num_conv_features, 1, self.conv_kernel_size, self.conv_stride, output_padding=1),
+            nn.ConvTranspose1d(self.num_conv_features, 1, self.conv_kernel_size, self.conv_stride),
             nn.SELU(),
             nn.Dropout(p=dropout_prob),
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(self.z_dim, self.z_dim*5),
+            nn.Linear(self.z_assess, self.z_assess * 2),
             nn.SELU(),
-            nn.Linear(self.z_dim*5, 1),
+            nn.Linear(self.z_assess * 2, 1),
             nn.SELU()
         )
 
@@ -122,15 +127,16 @@ class PCPerformanceVAE(nn.Module):
         z_tilde, z_prior, prior_dist = self.reparametrize(z_dist)
 
         # compute performance score from latent code
-        performance_score = self.classifier(z_tilde)  # batch x 1
+        performance_score = self.classifier(z_tilde[:, :self.z_assess])  # batch x 1
 
         # DECODE
         # create input for decoder rnn
-        dec_lstm_in = z_tilde.unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
+        dec_lstm_in = z_tilde[:, self.z_assess:].unsqueeze(1).repeat([1, seq_len, 1])  # batch x seq_len x z_dim
         # create hidden state for decoder rnn
-        dec_hidden = z_tilde.unsqueeze(0).repeat([self.num_recurrent_layers, 1, 1])
+        dec_hidden = z_tilde[:, self.z_assess:].unsqueeze(0).repeat([self.num_recurrent_layers, 1, 1])
         # pass through decoder
-        output = self.decode(dec_hidden, dec_lstm_in).view(input_tensor.size())
+        output = self.decode(dec_hidden, dec_lstm_in)
+        output = output.view(input_tensor.size())
 
         return output, performance_score, z_dist, prior_dist, z_tilde, z_prior
 
