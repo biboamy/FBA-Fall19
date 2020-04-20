@@ -3,7 +3,7 @@ import torch
 from functools import partial
 import numpy as np
 import random
-from model import PCPerformanceVAE
+from model import *
 from trainer import *
 from lib import *
 
@@ -31,20 +31,24 @@ def main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
-        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}{}_{}'.format(model_choose, batch_size, lr, midi_op, \
-                                                                                process_collate, sample_num, chunk_size, \
-                                                                                band, split, manualSeed)
-        # 'Similarity_batch16_lr0.001_midialigneds_windowChunk1sample10sec_CNN'
+        model_name = f'{model_choose}_' \
+                     f'batch{batch_size}_' \
+                     f'lr{lr}_midi{midi_op}_' \
+                     f'{process_collate}_' \
+                     f'sample{sample_num}_' \
+                     f'chunksize{chunk_size}_' \
+                     f'input_type{input_type}' \
+                     f'{band}{split}_{manualSeed}'
 
-        print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
-        print('band: {}, feat: {}, midi_op: {}'.format(band, feat, midi_op))
-
-        # check_missing_alignedmidi(band, feat, midi_op)
+        print(
+            f'batch_size: {batch_size}, num_workers: {num_workers}, epoch: {epoch}, lr: {lr}, model_name: {model_name}'
+        )
+        print(f'band: {band}, feat: {feat}, midi_op: {midi_op}')
 
         # model saving path
         from datetime import date
         date = date.today()
-        out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
+        out_model_fn = f'./model/{date.year}{date.month}{date.day}/{model_name}/'
         if not os.path.exists(out_model_fn):
             os.makedirs(out_model_fn)
 
@@ -67,7 +71,12 @@ def main():
                                                 **v_kwargs)
   
         # build model (function inside model.py)
-        model = PCPerformanceVAE(
+        num_in_channels = 1
+        if input_type == 'w_score':
+            num_in_channels = 2
+        model = PCPerformanceEncoder(
+            input_size=chunk_size,
+            num_in_channels=num_in_channels,
             dropout_prob=dropout_prob,
             z_dim=z_dim,
             kernel_size=kernel_size,
@@ -79,7 +88,7 @@ def main():
             model.cuda()    
 
         # start training (function inside train_utils.py)
-        trainer = Trainer(model, lr, epoch, out_model_fn)
+        trainer = Trainer(model, lr, epoch, out_model_fn, input_type=input_type, log=log)
         trainer.fit(tr_loader, va_loader)
 
         print(model_name)
@@ -106,6 +115,7 @@ if __name__ == "__main__":
     parser.add_argument("--kernel_size", type=int, default=kernel_size)
     parser.add_argument("--stride", type=int, default=stride)
     parser.add_argument("--num_conv_features", type=int, default=num_conv_features)
+    parser.add_argument("--log", type=int, default=1)
 
     # float
     parser.add_argument("--lr", type=float, default=lr)
@@ -123,6 +133,7 @@ if __name__ == "__main__":
     sample_num = args.sample_num
     chunk_size = args.chunk_size
     lr = args.lr
+    log = bool(args.log)
     num_rec_layers = args.num_rec_layers
     z_dim = args.z_dim
     kernel_size = args.kernel_size

@@ -6,6 +6,15 @@ import torch.nn.functional as F
 
 from config import *
 
+
+def normalize_pitch(pitch_tensor):
+    return pitch_tensor / pitch_norm_coeff
+
+
+def normalize_midi(midi_tensor):
+    return midi_tensor / midi_norm_coeff
+
+
 def mse_loss(pre, tar):
     loss_func = nn.MSELoss()
     # pre = torch.sigmoid(pre)
@@ -119,13 +128,11 @@ class Data2Torch(Dataset):
     def __len__(self):
         return len(self.xPC)
 
+
 # padding each sequence in the batch to the same length
 def my_collate(collate_params, batch):
-
     process_collate, sample_num, chunk_size = collate_params
-
     c_size = chunk_size
-
     def padding(batch):
         max_length = 0
         for i, data in enumerate(batch):
