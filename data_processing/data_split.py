@@ -4,7 +4,6 @@ import dill
 import os
 
 # specify the band
-band = "middle"
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
 YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
@@ -22,9 +21,9 @@ else:
     PATH_FBA_SPLIT = "/media/Data/split_dill/"
     cpu_num = 5
 
-def generate_newdata_newsplit():
-    dill_name = {'middle': 'middle_2_pc_6_fix.dill', 'symphonic': 'symphonic_2_pc_6.dill'}
-    total_name = {'middle':2611, 'symphonic': 3036}
+def generate_newdata_newsplit(band):
+    dill_name = {'middle': 'middle_2_pc_6_fix.dill', 'symphonic': 'symphonic_2_pc_6_fix.dill'}
+    total_name = {'middle':2611, 'symphonic': 2997}
 
     np.random.seed(1)
 
@@ -54,24 +53,24 @@ def generate_newdata_newsplit():
     with open('{}{}_2_pc_{}_valid.dill'.format(PATH_FBA_SPLIT, band, len(YEAR)), 'wb') as f:
         dill.dump(valid_data, f)
 
-def generate_newdata_oldsplit(): # only middle school
+def generate_newdata_oldsplit(band):
     PATH_FBA_DILL_OLD = '/media/Data/fall19/data/pitch_contour/'
-    newdill_name = PATH_FBA_DILL + 'middle_2_pc_6_fix.dill'
-    oldsplit_dill_name = {'train': 'middle_2_pc_3_train.dill', 'valid': 'middle_2_pc_3_valid.dill', 'test': 'middle_2_pc_3_test.dill'}
+    newdill_name = PATH_FBA_DILL + '{}_2_pc_6_fix.dill'.format(band)
+    oldsplit_dill_name = {'train': '{}_2_pc_3_train.dill', 'valid': '{}_2_pc_3_valid.dill', 'test': '{}_2_pc_3_test.dill'}
 
     np.random.seed(1)
 
-    perf_data_train_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['train'], 'rb'))
+    perf_data_train_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['train'].format(band), 'rb'))
     print(len(perf_data_train_old))
     perf_data_train_yearid = [(perf['year'], perf['student_id']) for perf in perf_data_train_old]
     del perf_data_train_old
 
-    perf_data_valid_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['valid'], 'rb'))
+    perf_data_valid_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['valid'].format(band), 'rb'))
     print(len(perf_data_valid_old))
     perf_data_valid_yearid = [(perf['year'], perf['student_id']) for perf in perf_data_valid_old]
     del perf_data_valid_old
 
-    perf_data_test_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['test'], 'rb'))
+    perf_data_test_old = dill.load(open(PATH_FBA_DILL_OLD + oldsplit_dill_name['test'].format(band), 'rb'))
     print(len(perf_data_test_old))
     perf_data_test_yearid = [(perf['year'], perf['student_id']) for perf in perf_data_test_old]
     del perf_data_test_old
@@ -99,13 +98,13 @@ def generate_newdata_oldsplit(): # only middle school
     valid_data = perf_data_all_new[np.array(valid_idx).astype(int)]
     test_data = perf_data_all_new[np.array(test_idx).astype(int)]
 
-    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
+    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
         dill.dump(train_data, f)
-    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
+    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
         dill.dump(test_data, f)
-    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, 'middle', 3), 'wb') as f:
+    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
         dill.dump(valid_data, f)
 
-# generate_newdata_newsplit()
+# generate_newdata_newsplit('symphonic')
 
-generate_newdata_oldsplit()
+# generate_newdata_oldsplit('symphonic')

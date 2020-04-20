@@ -84,6 +84,10 @@ if __name__ == "__main__":
     parser.add_argument("--process_collate", type=str, default=process_collate)
     parser.add_argument("--model_choose", type=str, default=model_choose)
 
+    parser.add_argument("--band", type=str, default=band)
+    parser.add_argument("--split", type=str, default=split)
+    parser.add_argument("--score_choose", type=str, default=score_choose)
+
     # int
     parser.add_argument("--batch_size", type=int, default=batch_size)
     parser.add_argument("--sample_num", type=int, default=sample_num)
@@ -99,6 +103,9 @@ if __name__ == "__main__":
     midi_op = args.midi_op
     process_collate = args.process_collate
     model_choose = args.model_choose
+    band = args.band
+    split = args.split
+    score_choose = args.score_choose
     batch_size = args.batch_size
     sample_num = args.sample_num
     chunk_size = args.chunk_size
