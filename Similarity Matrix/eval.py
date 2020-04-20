@@ -57,7 +57,7 @@ def main(model_name_e):
 
     print(model_name_e)
 
-    for i in range(0, 12):
+    for i in range(0, 10):
         if True:
             model_name = model_name_e+'_'+str(i)
 
@@ -92,14 +92,14 @@ def main(model_name_e):
     print(tr, max(tr), min(tr), statistics.median(tr))
     print(va, max(va), min(va), statistics.median(va))
     print(te, max(te), min(te), statistics.median(te))
-    print(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te),lr)
+    print("{:.3f}, {:.3f}, {:.3f}" .format(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)))
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     # string
-    parser.add_argument("--model_name_e", type=str, default=model_name_e, help="model name e.g. 20191028/testmodel")
+    parser.add_argument("--model_name_e", type=str, help="model name e.g. 20191028/testmodel")
 
     args = parser.parse_args()
 
