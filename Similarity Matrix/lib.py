@@ -22,7 +22,8 @@ def load_test_data(band='middle'):
     # Currently only allow pitch contour as feature
 
     # Read features from .dill files
-    tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
+    tePC = dill.load(open('/media/Data/fall19/data/matrix/matrix_fixed_test900.dill', 'rb'))
+    #tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
 
     return tePC
 
