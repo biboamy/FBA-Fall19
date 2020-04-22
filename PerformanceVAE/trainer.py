@@ -80,11 +80,12 @@ class Trainer:
                     # calculate reconstruction loss
                     loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
                     # calculate performance loss
-                    loss_score = mse_loss(vae_out[1].squeeze(), target)
+                    loss_score = mse_loss(vae_out[1], target)
                     # calculate latent loss
-                    loss_kld = compute_kld_loss(
-                        vae_out[2], vae_out[3], beta=self.beta
-                    )
+                    loss_kld = 0
+                    # loss_kld = compute_kld_loss(
+                    #     vae_out[2], vae_out[3]
+                    # )
                 elif type(self.model) == PCPerformanceEncoder:
                     input_tensor = pitch
                     if self.input_type == 'w_score':
@@ -97,7 +98,7 @@ class Trainer:
                     raise ValueError('invalid model type')
 
                 # add losses and optimize
-                total_loss = loss_reconstruct + loss_score + loss_kld
+                total_loss = loss_reconstruct + self.beta * loss_score + loss_kld
                 total_loss.backward()
                 self.optimizer.step()
                 loss_train_recon += loss_reconstruct
@@ -118,13 +119,14 @@ class Trainer:
                     score = normalize_midi(
                         score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
                     )
+                    target = target.view(target.shape[0] * target.shape[1], -1)
 
                     if type(self.model) == PCPerformanceVAE:
                         # predict latent vectors
                         vae_out = self.model(pitch)
                         # calculate loss
                         loss_reconstruct = mse_loss(vae_out[0].squeeze(), score.reshape(-1, score.shape[-1]))
-                        loss_score = mse_loss(vae_out[1].squeeze(), target.reshape(-1))
+                        loss_score = mse_loss(vae_out[1], target)
                     elif type(self.model) == PCPerformanceEncoder:
                         input_tensor = pitch
                         if self.input_type == 'w_score':

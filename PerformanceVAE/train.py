@@ -21,7 +21,7 @@ torch.backends.cudnn.deterministic = True
 
 def main():
 
-    for i in range(0,12):
+    for i in range(0, 12):
 
         manualSeed = i
         np.random.seed(manualSeed)
@@ -74,21 +74,33 @@ def main():
         num_in_channels = 1
         if input_type == 'w_score':
             num_in_channels = 2
-        model = PCPerformanceEncoder(
-            input_size=chunk_size,
-            num_in_channels=num_in_channels,
-            dropout_prob=dropout_prob,
-            z_dim=z_dim,
-            kernel_size=kernel_size,
-            stride=stride,
-            num_rec_layers=num_rec_layers,
-            num_conv_features=num_conv_features
-        )
+        if model_choose == 'PerformanceVAE':
+            model = PCPerformanceVAE(
+                input_size=chunk_size,
+                num_in_channels=num_in_channels,
+                dropout_prob=dropout_prob,
+                z_dim=z_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                num_conv_features=num_conv_features
+            )
+        elif model_choose == 'PerformanceEncoder':
+            model = PCPerformanceEncoder(
+                input_size=chunk_size,
+                num_in_channels=num_in_channels,
+                dropout_prob=dropout_prob,
+                z_dim=z_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                num_conv_features=num_conv_features
+            )
+        else:
+            raise ValueError("Invalid model type.")
         if torch.cuda.is_available():
             model.cuda()    
 
         # start training (function inside train_utils.py)
-        trainer = Trainer(model, lr, epoch, out_model_fn, input_type=input_type, log=log)
+        trainer = Trainer(model, lr, epoch, out_model_fn, beta=beta, input_type=input_type, log=log)
         trainer.fit(tr_loader, va_loader)
 
         print(model_name)
@@ -115,10 +127,11 @@ if __name__ == "__main__":
     parser.add_argument("--kernel_size", type=int, default=kernel_size)
     parser.add_argument("--stride", type=int, default=stride)
     parser.add_argument("--num_conv_features", type=int, default=num_conv_features)
-    parser.add_argument("--log", type=int, default=1)
+    parser.add_argument("--log", type=int, default=log)
 
     # float
     parser.add_argument("--lr", type=float, default=lr)
+    parser.add_argument("--beta", type=float, default=beta)
     parser.add_argument("--dropout_prob", type=float, default=dropout_prob)
 
     args = parser.parse_args()
@@ -134,6 +147,7 @@ if __name__ == "__main__":
     chunk_size = args.chunk_size
     lr = args.lr
     log = bool(args.log)
+    beta = args.beta
     num_rec_layers = args.num_rec_layers
     z_dim = args.z_dim
     kernel_size = args.kernel_size

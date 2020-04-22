@@ -17,29 +17,30 @@ midi_aligned_s = "{}_2_midi_aligned_s_6.dill"
 
 feat = 'pitch contour'  # fixed
 midi_op = 'aligned_s'  # fixed
-model_choose = "PerformanceEncoder"  # fixed
+model_choose = "PerformanceVAE"  # 'PerformanceVAE', 'PerformanceEncoder'
 score_choose = 0  # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
 
 # training parameters
-batch_size = 64
+batch_size = 8
 num_workers = 2  # fixed
 shuffle = True  # fixed
 epoch = 1000  # fixed
 lr = 1e-4
-log = True
+log = 1
+beta = 1.0
 
-process_collate = 'windowChunk'  # 'randomChunk', 'windowChunk', 'padding'
-sample_num = 1  # numbers of chunks # if choosing windowChunk, sample_num has to be 1
+process_collate = 'randomChunk'  # 'randomChunk', 'windowChunk', 'padding'
+sample_num = 3  # numbers of chunks # if choosing windowChunk, sample_num has to be 1
 chunk_size = 2000  # 1000 ~ 5 sec / 2000 ~ 10 sec
 
 # model parameters
-dropout_prob = 0.5
+dropout_prob = 0.1
 num_rec_layers = 2
 z_dim = 16
 kernel_size = 7
 stride = 1
 num_conv_features = 4
-input_type = 'no_score'  # 'w_score', 'no_score'
+input_type = 'w_score'  # 'w_score', 'no_score'
 
 # normalization params
 pitch_norm_coeff = 12543.854   # 4186

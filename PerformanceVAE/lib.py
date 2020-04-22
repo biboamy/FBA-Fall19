@@ -22,7 +22,7 @@ def mse_loss(pre, tar):
     return loss
 
 
-def compute_kld_loss(z_dist, prior_dist, beta, c=0.0):
+def compute_kld_loss(z_dist, prior_dist, beta=1.0, c=0.0):
     """
 
     :param z_dist: torch.distributions object
@@ -197,9 +197,9 @@ def my_collate(collate_params, batch):
         c = list(zip(pc, sc, y))
         random.shuffle(c)
         pc, sc, y = zip(*c)
-        pc = torch.cat(pc,0)
-        sc = torch.cat(sc,0)
-        y = torch.cat(y,0).squeeze()
+        pc = torch.cat(pc, 0)
+        sc = torch.cat(sc, 0)
+        y = torch.cat(y, 0).squeeze()
 
         for i, data in enumerate(batch):
             batch[i] = (pc[i*num:i*num+num], sc[i*num:i*num+num], y[i*num:i*num+num])
