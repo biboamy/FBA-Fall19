@@ -4,8 +4,8 @@ PATH_FBA_MIDI = "/media/Data/fall19/data/midi/"
 PATH_FBA_MTX = "/media/Data/fall19/data/matrix/"
 PATH_FBA_SPLIT = "/media/Data/split_dill/"
 
-band = "symphonic"
-split = "new" # old: 2013~2015, new: 2013~2018
+band = "middle" # middle, symphonic
+split = "old" # old: 2013~2015, new: 2013~2018
 
 data_all_pc = "{}_2_pc_6_fix.dill"
 
@@ -15,18 +15,19 @@ data_test_mtx = {"old": "{}_matrix_fixed_test{}_oldsplit.dill", "new": "{}_matri
 
 # training parameters
 batch_size = 32
-num_workers = 1 # fixed
+num_workers = 4 # fixed
 shuffle = True # fixed
 epoch = 1000 # fixed
 lr = 0.05
-matrix_dim = 600 # resize dim
-score_choose = 0 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
+isNorm = True
+matrix_dim = 900 # resize dim
+score_choose = 3 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
 model_choose = 'ConvNet_Residual_BatchNorm_score'+str(score_choose) #'ConvNet_Fixed'
 
 manualSeed = 10 # random.randint(0, 1000) #11
 
-model_name = '{}_{}_batch{}_lr{}_{}{}'.format(model_choose, matrix_dim, batch_size, lr, band, split)
+#model_name = '{}_{}_batch{}_lr{}_{}_{}_isNorm{}'.format(model_choose, matrix_dim, batch_size, lr, band, split,isNorm)
 
-from datetime import date
-date = date.today()
-model_name_e = '%d%d%d/%s' % (date.year, date.month, date.day, model_name)
+#from datetime import date
+#date = date.today()
+#model_name_e = '%d%d%d/%s' % (date.year, date.month, date.day, model_name)
