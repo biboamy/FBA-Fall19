@@ -159,7 +159,7 @@ class PCPerformanceVAE(nn.Module):
 
         # define encoder mean and variance layers
         self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
-        self.enc_log_std = nn.Linear(2 * self.z_dim, self.z_dim)
+        # self.enc_log_std = nn.Linear(2 * self.z_dim, self.z_dim)
 
         # define decoder linear layer
         self.dec_lin3 = nn.Linear(self.z_score, 2 * self.z_dim)
@@ -287,3 +287,4 @@ class PCPerformanceVAE(nn.Module):
         )
         z_prior = prior_dist.sample()
         return z_tilde, z_prior, prior_dist
+

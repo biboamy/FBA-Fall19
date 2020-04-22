@@ -3,7 +3,6 @@ import torch, json
 import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
-
 from config import *
 
 
@@ -53,6 +52,18 @@ def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     SC = dill.load(open(mid_file, 'rb'))  # all scores / aligned midi
 
     return trPC, vaPC, SC
+
+
+def load_test_data(band='middle', feat='pitch contour'):
+    # Load pitch contours
+    # Currently only allow pitch contour as feature
+    import dill
+    assert(feat=='pitch contour')
+
+    # test
+    tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
+
+    return tePC
 
 
 class Data2Torch(Dataset):
@@ -214,4 +225,103 @@ def my_collate(collate_params, batch):
         assert (process_collate == 'windowChunk')
         batch = window_chunk(batch)
         
+    return torch.utils.data.dataloader.default_collate(batch)
+
+
+def test_collate(collate_params, batch):
+    overlap_flag, chunk_size = collate_params
+
+    c_size = chunk_size
+
+    def non_overlap(batch):
+        pc, sc, y = [], [], []
+        for i, data in enumerate(batch):
+            size = int((len(data[0]) - 10) / c_size)  # -10: possible dismatch in size between pc & alignment
+            for j in range(size):
+                pc.append(data[0][j * c_size:j * c_size + c_size].view(1, c_size))
+                if len(data) > 3:
+                    idx = np.arange(np.floor(data[3][np.int(j * c_size / 5)]),
+                                    np.floor(data[3][np.int((j * c_size + c_size) / 5)] + 1))
+                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                    tmpsc = data[1][idx]
+                    xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
+                    sc.append(torch.Tensor(sc_interp).view(1, -1))
+                else:
+                    sc.append(data[1][j * c_size:j * c_size + c_size].view(1, c_size))
+                y.append(data[2].view(1, 1))
+
+            pc.append(data[0][-c_size:].view(1, c_size))
+            if len(data) > 3:
+                idx = np.arange(np.floor(data[3][np.int((len(data[0]) - c_size - 2) / 5)]),
+                                np.floor(data[3][np.int((len(data[0]) - 2) / 5)] + 1))
+                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                tmpsc = data[1][idx]
+                xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+                x = np.arange(idx.shape[0])
+                sc_interp = np.interp(xval, x, tmpsc)
+                sc.append(torch.Tensor(sc_interp).view(1, -1))
+            else:
+                sc.append(data[1][-c_size:].view(1, c_size))
+            y.append(data[2].view(1, 1))
+
+            pc = torch.cat(pc, 0)
+            sc = torch.cat(sc, 0)
+            y = torch.cat(y, 0).squeeze()
+
+            batch[i] = (pc, sc, y)
+
+        return batch
+
+    def overlap(batch, hopSize):
+        pc, sc, y = [], [], []
+        print(batch)
+        for i, data in enumerate(batch):
+            j = 0
+            while (j + c_size) < len(data[0] - 10):  # -10: possible dismatch in size between pc & alignment
+                pc.append(data[0][j:j + c_size].view(1, c_size))
+                if len(data) > 3:
+                    idx = np.arange(np.floor(data[3][j]), np.floor(data[3][j + c_size]))
+                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                    tmpsc = data[1][idx]
+                    xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
+                    sc.append(torch.Tensor(sc_interp).view(1, -1))
+                else:
+                    sc.append(data[1][j:j + c_size].view(1, c_size))
+
+                y.append(data[2].view(1, 1))
+                j += hopSize
+
+            pc.append(data[0][-c_size:].view(1, c_size))
+            if len(data) > 3:
+                idx = np.arange(np.floor(data[3][len(data[0]) - c_size - 2]), np.floor(data[3][len(data[0]) - 2]))
+                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+
+                tmpsc = data[1][idx]
+                xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+                x = np.arange(idx.shape[0])
+                sc_interp = np.interp(xval, x, tmpsc)
+                sc.append(torch.Tensor(sc_interp).view(1, -1))
+            else:
+                sc.append(data[1][-c_size:].view(1, c_size))
+            y.append(data[2].view(1, 1))
+
+            pc = torch.cat(pc, 0)
+            sc = torch.cat(sc, 0)
+            y = torch.cat(y, 0).squeeze()
+            batch[i] = (pc, sc, y)
+
+        return batch
+
+    if overlap_flag:
+        batch = overlap(batch, 500)
+    else:
+        batch = non_overlap(batch)
+
     return torch.utils.data.dataloader.default_collate(batch)
