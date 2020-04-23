@@ -27,8 +27,6 @@ class Trainer:
             self.model.parameters(), lr=lr
         )
 
-        print(f'Start Training #{epoch}')
-
         # configure tensorboardX summary writer
         current = datetime.datetime.now()
         if self.log:

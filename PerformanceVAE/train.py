@@ -6,10 +6,10 @@ import random
 from model import *
 from trainer import *
 from lib import *
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
-
 from config import *
+from eval import eval_main
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # change
 
 # DO NOT change the default values if possible
 # except during DEBUGGING
@@ -19,10 +19,16 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 
-def main():
+def train_main():
+    # load training and validation data (function inside lib.py)
+    trPC, vaPC, SC = load_data(band, feat, midi_op)
+
+    # prepare dataloader (function inside lib.py)
+    t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,
+                'drop_last': True}
+    v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
 
     for i in range(0, 12):
-
         manualSeed = i
         np.random.seed(manualSeed)
         random.seed(manualSeed)
@@ -38,7 +44,7 @@ def main():
                      f'sample{sample_num}_' \
                      f'chunksize{chunk_size}_' \
                      f'input_type{input_type}' \
-                     f'{band}{split}_{manualSeed}'
+                     f'{band}{split}{score_choose}_{manualSeed}'
 
         print(
             f'batch_size: {batch_size}, num_workers: {num_workers}, epoch: {epoch}, lr: {lr}, model_name: {model_name}'
@@ -46,30 +52,23 @@ def main():
         print(f'band: {band}, feat: {feat}, midi_op: {midi_op}')
 
         # model saving path
-        from datetime import date
-        date = date.today()
-        out_model_fn = f'./model/{date.year}{date.month}{date.day}/{model_name}/'
+        out_model_fn = f'./model/{model_choose}/{model_name}/'
         if not os.path.exists(out_model_fn):
             os.makedirs(out_model_fn)
 
-        # load training and validation data (function inside lib.py)
-        trPC, vaPC, SC = load_data(band, feat, midi_op)
+        tr_loader = torch.utils.data.DataLoader(
+            Data2Torch([trPC, SC], midi_op),
+            worker_init_fn=np.random.seed(manualSeed),
+            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
+            **t_kwargs
+        )
+        va_loader = torch.utils.data.DataLoader(
+            Data2Torch([vaPC, SC], midi_op),
+            worker_init_fn=np.random.seed(manualSeed),
+            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
+            **v_kwargs
+        )
 
-        # if resize the midi to fit the length of audio
-        resample = False
-        if midi_op == 'resize':
-            resample = True
-
-        # prepare dataloader (function inside lib.py)
-        t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
-        v_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'pin_memory': True}
-        tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), worker_init_fn=np.random.seed(manualSeed), \
-                                                collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
-                                                **t_kwargs)
-        va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), worker_init_fn=np.random.seed(manualSeed), \
-                                                collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]), \
-                                                **v_kwargs)
-  
         # build model (function inside model.py)
         num_in_channels = 1
         if input_type == 'w_score':
@@ -99,11 +98,19 @@ def main():
         if torch.cuda.is_available():
             model.cuda()    
 
-        # start training (function inside train_utils.py)
-        trainer = Trainer(model, lr, epoch, out_model_fn, beta=beta, input_type=input_type, log=log)
+        # start training (function inside trainer.py)
+        trainer = Trainer(
+            model=model,
+            lr=lr,
+            epoch=epoch,
+            save_fn=out_model_fn,
+            beta=beta,
+            input_type=input_type,
+            log=log
+        )
         trainer.fit(tr_loader, va_loader)
 
-        print(model_name)
+        del [tr_loader, va_loader, model]
 
 
 if __name__ == "__main__":
@@ -154,4 +161,5 @@ if __name__ == "__main__":
     stride = args.stride
     num_conv_features = args.num_conv_features
 
-    main()
+    train_main()
+    eval_main()

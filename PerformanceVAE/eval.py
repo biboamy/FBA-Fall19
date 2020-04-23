@@ -54,16 +54,16 @@ def evaluate_model(model, dataloader, input_type='w_score'):
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 
-def main():
+def eval_main():
     train_metrics, val_metrics, test_metrics = [], [], []
-    model_n = '2020421/'
-    model_n += f'{model_choose}_' \
-                  f'batch{batch_size}_' \
-                  f'lr{lr}_midi{midi_op}_' \
-                  f'{process_collate}_' \
-                  f'sample{sample_num}_' \
-                  f'chunksize{chunk_size}_' \
-                  f'input_type{input_type}'
+    model_n = f'{model_choose}/' \
+              f'{model_choose}_' \
+              f'batch{batch_size}_' \
+              f'lr{lr}_midi{midi_op}_' \
+              f'{process_collate}_' \
+              f'sample{sample_num}_' \
+              f'chunksize{chunk_size}_' \
+              f'input_type{input_type}'
     trPC, vaPC, SC = load_data(band, feat, midi_op)
     tePC = load_test_data(band, feat)
 
@@ -78,7 +78,7 @@ def main():
         Data2Torch([tePC, SC], midi_op), collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs
     )
     for i in range(0, 12):
-        model_name = model_n + f'{band}{split}_{i}'
+        model_name = model_n + f'{band}{split}{score_choose}_{i}'
 
         # if resize the midi to fit the length of audio
         resample = False
@@ -176,4 +176,4 @@ if __name__ == "__main__":
     stride = args.stride
     num_conv_features = args.num_conv_features
 
-    main()
+    eval_main()
