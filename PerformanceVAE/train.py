@@ -75,7 +75,6 @@ def train_main():
                 num_conv_features=num_conv_features
             )
         elif model_choose == 'PCConvNet':
-            input_type = 'no_score'
             model = PCConvNet()
         else:
             raise ValueError("Invalid model type.")
