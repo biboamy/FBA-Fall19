@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class block(nn.Module):
     def __init__(self, inp, out):
         super(block, self).__init__()
@@ -77,9 +76,14 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
                 nn.ReLU(),
                 #nn.Dropout()
             )
-        
+        if '400' in model_name:
+            inLayer = 64
+        elif '600' in model_name:
+            inLayer = 196
+        elif '900' in model_name:
+            inLayer=484
         self.classifier = nn.Sequential(
-            nn.Linear(64, 128), # first dim need to be determined
+            nn.Linear(inLayer, 128), # first dim need to be determined
             nn.ReLU(),
             nn.Dropout(),
             #nn.Linear(1024, 1024),

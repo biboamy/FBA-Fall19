@@ -24,9 +24,9 @@ def main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
-        model_name = '{}_{}_batch{}_lr{}_{}{}_{}'.format(model_choose, matrix_dim, batch_size, lr, band, split, manualSeed)
+        model_name = '{}_{}_batch{}_lr{}_{}_{}_isNorm{}_{}'.format(model_choose, matrix_dim, batch_size, lr, band, split, isNorm, manualSeed)
 
-        print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch,
+        print('range: {}, batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(i,batch_size, num_workers, epoch,
                                                                                         lr, model_name))
         print('band: {}, split: {}, matrix_dim: {}'.format(band, split, matrix_dim))
 

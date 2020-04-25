@@ -34,6 +34,9 @@ class Data2Torch(Dataset):
         oup = self.data[index]['matrix'] / 7
         score = self.data[index]['ratings'][score_choose]
 
+        if isNorm:
+            oup = oup/7
+
         return torch.from_numpy(oup).float(), torch.from_numpy(np.array([score])).float()
     
     def __len__(self):

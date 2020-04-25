@@ -110,7 +110,7 @@ class Trainer:
                 best_loss = loss_val
 
             # early stopping
-            if (e-best_epoch) > 20:
+            if (e-best_epoch) > 50:
                 print(e, best_epoch)
                 print('early stopping')
                 break
