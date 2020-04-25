@@ -4,7 +4,7 @@ import dill, os
 import numpy as np
 
 # specify the band here
-band = "middle"
+band = "symphonic"
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
 
@@ -74,7 +74,7 @@ def createMatrixDill(PC, target_dim, saveDill):
     with open(saveDill, 'wb') as f:
         dill.dump(data_dill, f)
 
-for dim in [400, 600, 900]:
+for dim in [400, 600, 900, 1200, 1600]:
     print(dim)
     createMatrixDill(trPC, dim, '{}{}_matrix_fixed_train{}{}.dill'.format(PATH_FBA_MTX, band, dim, postfix))
     createMatrixDill(vaPC, dim, '{}{}_matrix_fixed_valid{}{}.dill'.format(PATH_FBA_MTX, band, dim, postfix))

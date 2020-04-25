@@ -20,14 +20,14 @@ id2idx_file = "{}_id2idx_6.dill"
 
 # training parameters
 batch_size = 32
-num_workers = 1 # fixed
+num_workers = 1 # fixed: HDF5 does not allow multiprocessing
 shuffle = True # fixed
 epoch = 1000 # fixed
-lr = 0.1
+lr = 0.05
 
 isNorm = True
-chunk_matrix_dim = 320 # resize dim
-score_choose = 0 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
+chunk_matrix_dim = 200 # resize dim; the original submatrix should be: midi_snippet_len x (chunk_size/5)
+score_choose = 0 # 0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
 
 process_collate = 'randomChunk' # 'randomChunk', 'windowChunk', 'padding'
 sample_num = 2 # numbers of chunks # if choosing windowChunk, sample_num has to be 1

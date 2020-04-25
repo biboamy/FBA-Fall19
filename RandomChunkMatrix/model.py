@@ -84,6 +84,10 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
             inLayer=484
         elif '320' in model_name:
             inLayer = 36 # change
+        elif '1000' in model_name:
+            inLayer = 576
+        elif '200' in model_name:
+            inLayer = 16
         self.classifier = nn.Sequential(
             nn.Linear(inLayer, 128), # first dim need to be determined
             nn.ReLU(),
