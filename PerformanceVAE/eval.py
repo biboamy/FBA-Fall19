@@ -69,6 +69,8 @@ def eval_main():
               f'sample{sample_num}_' \
               f'chunksize{chunk_size}_' \
               f'input_type{input_type}'
+    print(f'Input Type: {input_type}')
+    print(f'Score Choose: {score_choose}')
     trPC, vaPC, SC = load_data(band, feat, midi_op)
     tePC = load_test_data(band, feat)
 
@@ -110,6 +112,8 @@ def eval_main():
                 stride=stride,
                 num_conv_features=num_conv_features
             )
+        elif model_choose == 'PCConvNet':
+            model = PCConvNet()
         if torch.cuda.is_available():
             model.cuda()
         model.load_state_dict(torch.load(model_path)['state_dict'])
