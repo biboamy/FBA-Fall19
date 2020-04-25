@@ -26,12 +26,13 @@ epoch = 1000 # fixed
 lr = 0.05
 
 isNorm = True
-chunk_matrix_dim = 200 # resize dim; the original submatrix should be: midi_snippet_len x (chunk_size/5)
+chunk_matrix_dim = 400 # resize dim; the original submatrix should be: midi_snippet_len x (chunk_size/5)
 score_choose = 0 # 0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
 
 process_collate = 'randomChunk' # 'randomChunk', 'windowChunk', 'padding'
 sample_num = 2 # numbers of chunks # if choosing windowChunk, sample_num has to be 1
 chunk_size = 2000 # 1000 ~ 5 sec / 2000 ~ 10 sec
+overlap_flag = False
 
 model_choose = 'ConvNet_Residual_BatchNorm_score'+str(score_choose) #'ConvNet_Fixed'
 

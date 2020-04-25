@@ -1,7 +1,8 @@
 from sklearn import metrics
 from model import Net_Fixed
-from lib import load_data, load_test_data, Data2Torch
-import os, torch
+from lib import load_data, load_test_data, Data2Torch, test_collate
+from functools import partial
+import os, torch, h5py, dill
 from torch.autograd import Variable
 import numpy as np
 from scipy.stats import pearsonr
@@ -32,9 +33,9 @@ def evaluate_model(model, dataloader):
     all_targets = []
     for i, (_input) in enumerate(dataloader):
         matrix, target = Variable(_input[0].cuda()), Variable(_input[1].cuda())
-        pred = model(matrix.unsqueeze(1))
+        pred = model(matrix.view(-1,1,matrix.shape[2], matrix.shape[3]))
         all_predictions.extend(pred.squeeze(1).data.cpu().numpy())
-        all_targets.extend(target.data.cpu().numpy())
+        all_targets.extend(target.view(-1,1).data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 # DO NOT change the default values if possible
@@ -42,22 +43,27 @@ def evaluate_model(model, dataloader):
 
 def main(model_name_e):
 
-    trPC, vaPC = load_data(band)
+    trPC, vaPC, SC = load_data(band)
     tePC = load_test_data(band)
 
-    kwargs = {'batch_size': batch_size, 'pin_memory': True}
-    #kwargs = {'pin_memory': True}
-    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC]), **kwargs)
-    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
-    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
+    # load the original matrices .h5 file and id2idx file
+    orig_mtx_h5 = h5py.File(PATH_FBA_MTX + mtx_orig_h5.format(band), 'r')
+    id2idx = dill.load(open(PATH_FBA_MTX + id2idx_file.format(band), 'rb'))
 
+    kwargs = {'num_workers': num_workers, 'pin_memory': True}
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, id2idx, orig_mtx_h5, SC]), \
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, id2idx, orig_mtx_h5, SC]), \
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, id2idx, orig_mtx_h5, SC]),
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
     tr = []
     va = []
     te = []
 
     print(model_name_e)
 
-    for i in range(0, 10):
+    for i in range(0, 1):
         if True:
             model_name = model_name_e+'_'+str(i)
 
@@ -93,6 +99,8 @@ def main(model_name_e):
     print(va, max(va), min(va), statistics.median(va))
     print(te, max(te), min(te), statistics.median(te))
     print("{:.3f}, {:.3f}, {:.3f}" .format(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)))
+
+    orig_mtx_h5.close()
 
 if __name__ == "__main__":
     import argparse

@@ -135,7 +135,7 @@ def test_collate(collate_params, batch):
     c_size = chunk_size
 
     def non_overlap(batch):
-        mtx, y = [], [], []
+        mtx, y = [], []
         for i, data in enumerate(batch):
             size = int((len(data[0]) - 10) / c_size)  # -10: possible dismatch in size between pc & alignment
             for j in range(size):
@@ -209,53 +209,7 @@ def test_collate(collate_params, batch):
 
         return batch
 
-    def overlap(batch, hopSize):
-        pc, sc, y = [], [], []
-        print(batch)
-        for i, data in enumerate(batch):
-            j = 0
-            while (j + c_size) < len(data[0] - 10):  # -10: possible dismatch in size between pc & alignment
-                pc.append(data[0][j:j + c_size].view(1, c_size))
-                if len(data) > 3:
-                    idx = np.arange(np.floor(data[3][j]), np.floor(data[3][j + c_size]))
-                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
-
-                    tmpsc = data[1][idx]
-                    xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
-                    x = np.arange(idx.shape[0])
-                    sc_interp = np.interp(xval, x, tmpsc)
-                    sc.append(torch.Tensor(sc_interp).view(1, -1))
-                else:
-                    sc.append(data[1][j:j + c_size].view(1, c_size))
-
-                y.append(data[2].view(1, 1))
-                j += hopSize
-
-            pc.append(data[0][-c_size:].view(1, c_size))
-            if len(data) > 3:
-                idx = np.arange(np.floor(data[3][len(data[0]) - c_size - 2]), np.floor(data[3][len(data[0]) - 2]))
-                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
-
-                tmpsc = data[1][idx]
-                xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
-                x = np.arange(idx.shape[0])
-                sc_interp = np.interp(xval, x, tmpsc)
-                sc.append(torch.Tensor(sc_interp).view(1, -1))
-            else:
-                sc.append(data[1][-c_size:].view(1, c_size))
-            y.append(data[2].view(1, 1))
-
-            pc = torch.cat(pc, 0)
-            sc = torch.cat(sc, 0)
-            y = torch.cat(y, 0).squeeze()
-            batch[i] = (pc, sc, y)
-
-        return batch
-
-    if overlap_flag:
-        batch = overlap(batch, 500)
-    else:
-        batch = non_overlap(batch)
+    batch = non_overlap(batch)
 
     return torch.utils.data.dataloader.default_collate(batch)
     
