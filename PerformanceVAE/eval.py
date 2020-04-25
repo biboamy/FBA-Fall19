@@ -1,5 +1,6 @@
 from sklearn import metrics
 import os
+import json
 import torch
 import random
 from torch.autograd import Variable
@@ -50,6 +51,10 @@ def evaluate_model(model, dataloader, input_type='w_score'):
                 input_tensor = torch.cat((input_tensor, score), 1)
             pred = model(input_tensor).reshape(-1)
             all_predictions.extend(pred.data.cpu().numpy())
+        elif type(model) == PCConvNet:
+            input_tensor = pitch
+            pred = model(input_tensor).reshape(-1)
+            all_predictions.extend(pred.data.cpu().numpy())
         all_targets.extend(target.reshape(-1).data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
@@ -77,13 +82,9 @@ def eval_main():
     te_loader = torch.utils.data.DataLoader(
         Data2Torch([tePC, SC], midi_op), collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs
     )
+    eval_metrics = dict()
     for i in range(0, 12):
         model_name = model_n + f'{band}{split}{score_choose}_{i}'
-
-        # if resize the midi to fit the length of audio
-        resample = False
-        if midi_op == 'resize':
-            resample = True
 
         model_path = './model/'+model_name+'/model'
         num_in_channels = 1
@@ -119,7 +120,24 @@ def eval_main():
         val_metrics.append(va)
         test_metrics.append(te)
         print(tr, va, te)
+        eval_metrics[i] = (tr, va, te)
         del model
+
+    eval_metrics['avg'] = (
+        sum(train_metrics)/len(train_metrics),
+        sum(val_metrics) / len(val_metrics),
+        sum(test_metrics) / len(test_metrics)
+    )
+
+    results_dir = './results'
+    results_fp = os.path.join(
+        results_dir,
+        model_n + '_results_dict.json'
+    )
+    if not os.path.exists(os.path.dirname(results_fp)):
+        os.makedirs(os.path.dirname(results_fp))
+    with open(results_fp, 'w') as outfile:
+        json.dump(eval_metrics, outfile, indent=2)
 
     print('model :', model_n)
     print('train metrics', sum(train_metrics)/len(train_metrics))
