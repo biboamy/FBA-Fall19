@@ -4,6 +4,86 @@ from torch.autograd import Variable
 from collections import OrderedDict
 
 
+class PCConvNet(nn.Module):
+    """
+    Class to implement a deep neural model for music performance assessment using
+     pitch contours as input
+    """
+
+    def __init__(self, model_choose='CNN', mode=0):
+        """
+        Initializes the class with internal parameters for the different layers
+        Args:
+            mode:       int, 0,1 specifying different minimum input size, 0: 1000, 1:500
+        """
+        super(PCConvNet, self).__init__()
+        self.kernel_size = 7
+        self.stride = 3
+        self.n0_features = 4
+        self.n1_features = 8
+        self.n2_features = 16
+        # define the different convolutional modules
+        self.conv = nn.Sequential(
+            # define the 1st convolutional layer
+            nn.Conv1d(1, self.n0_features, self.kernel_size, self.stride),  # output is (1000 - 7)/3 + 1 = 332
+            nn.BatchNorm1d(self.n0_features),
+            nn.ReLU(),
+            # nn.Dropout(),
+            # define the 2nd convolutional layer
+            nn.Conv1d(self.n0_features, self.n1_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n1_features),
+            nn.ReLU(),
+            # nn.Dropout(),
+            # define the 3rd convolutional layer
+            nn.Conv1d(self.n1_features, self.n2_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n2_features),
+            nn.ReLU(),
+            # nn.Dropout(),
+            # define the final fully connected layer (fully convolutional)
+            nn.Conv1d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n2_features),
+            nn.ReLU(),
+            # nn.Dropout()
+        )
+        self.model_choose = model_choose
+        self.hidden_size = 16
+        self.n_layers = 1
+        self.classifier = nn.Sequential(
+            nn.Linear(self.n2_features, 2 * self.n2_features),
+            nn.ReLU(),
+            nn.Linear(2 * self.n2_features, 1),
+            nn.ReLU()
+        )
+        if self.model_choose == 'CRNN':
+            self.lstm = nn.GRU(self.n2_features, self.hidden_size, self.n_layers, batch_first=True)
+
+    def forward(self, input):
+        """
+        Defines the forward pass of the PitchContourAssessor module
+        Args:
+            input:  torch Variable (mini_batch_size x zero_pad_len), of input pitch contours
+                    mini_batch_size:    size of the mini batch during one training iteration
+                    zero_pad_len:       length to which each input sequence is zero-padded
+                    seq_lengths:        torch tensor (mini_batch_size x 1), length of each pitch contour
+        """
+        # get mini batch size from input and reshape
+        mini_batch_size, _, sig_size = input.size()
+
+        # compute the forward pass through the convolutional layer
+        conv_out = self.conv(input)
+        # compute final output
+        if self.model_choose == 'CNN':
+            final_output = torch.mean(conv_out, 2)
+        elif self.model_choose == 'CRNN':
+            lstm_out, self.hidden = self.lstm(conv_out.transpose(1, 2))
+            mini_batch_size, lstm_seq_len, num_features = lstm_out.size()
+            final_output = torch.mean(lstm_out, 1)
+        else:
+            raise ValueError('Please input the correct model')
+        final_output = self.classifier(final_output)
+        return final_output
+
+
 class PCPerformanceEncoder(nn.Module):
     """
     Class to implemnt an encoder based on pitch contours for performance assessment
@@ -22,50 +102,50 @@ class PCPerformanceEncoder(nn.Module):
         # initialize interal parameters
         self.input_size = input_size
         self.conv_kernel_size = kernel_size
-        self.num_in_channels = num_in_channels
         self.conv_stride = 1
         self.num_rnn_rollouts = 32
         self.num_conv_features = num_conv_features
         self.z_dim = z_dim
 
         # define the different convolutional modules
-        self.kernel_size = 7
-        self.stride = 3
-        self.n0_features = 4
-        self.n1_features = 8
-        self.n2_features = 16
         self.enc_conv_layers = nn.Sequential(
             # define the 1st convolutional layer
-            nn.Conv1d(self.num_in_channels, self.n0_features, self.kernel_size, self.stride),
-            nn.BatchNorm1d(self.n0_features),
-            nn.ReLU(),
-            # nn.Dropout(),
+            nn.Conv1d(1, self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.BatchNorm1d(self.num_conv_features),
+            nn.SELU(),
+            nn.Dropout(p=dropout_prob),
+
             # define the 2nd convolutional layer
-            nn.Conv1d(self.n0_features, self.n1_features, self.kernel_size, self.stride),
-            nn.BatchNorm1d(self.n1_features),
-            nn.ReLU(),
-            # nn.Dropout(),
+            nn.Conv1d(self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.BatchNorm1d(2 * self.num_conv_features),
+            nn.SELU(),
+            nn.Dropout(p=dropout_prob),
+
             # define the 3rd convolutional layer
-            nn.Conv1d(self.n1_features, self.n2_features, self.kernel_size, self.stride),
-            nn.BatchNorm1d(self.n2_features),
-            nn.ReLU(),
-            # nn.Dropout(),
-            # define the final fully connected layer (fully convolutional)
-            nn.Conv1d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
-            nn.BatchNorm1d( self.n2_features),
-            nn.ReLU(),
-            # nn.Dropout()
+            nn.Conv1d(2 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.BatchNorm1d(4 * self.num_conv_features),
+            nn.SELU(),
+            nn.Dropout(p=dropout_prob),
+
+            # define the 4th convolutional layer
+            nn.Conv1d(4 * self.num_conv_features, 8 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
+            nn.BatchNorm1d(8 * self.num_conv_features),
+            nn.SELU(),
+            nn.Dropout(p=dropout_prob),
         )
 
         # define encoder linear layer
         self.out_seq_len = self.input_size - 4 * (self.conv_kernel_size - 1)
         self.enc_lin = nn.Linear(self.out_seq_len, self.num_rnn_rollouts)
         self.enc_lin2 = nn.Linear(8 * self.num_conv_features * self.num_rnn_rollouts, 2 * self.z_dim)
-
         self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
-        self.hidden_size = 16
-        self.n_layers = 1
-        self.lstm = nn.GRU(self.n2_features, self.hidden_size, self.n_layers, batch_first=True)
+
+        self.classifier = nn.Sequential(
+            nn.Linear(self.z_dim, 2 * self.z_dim),
+            nn.SELU(),
+            nn.Linear(2 * self.z_dim, 1),
+            nn.SELU()
+        )
 
     def xavier_initialization(self):
         """
@@ -87,11 +167,14 @@ class PCPerformanceEncoder(nn.Module):
         """
         if len(input_tensor.size()) == 2:
             input_tensor = input_tensor.unsqueeze(1)
-        mini_batch_size, in_channels, zero_pad_len = input_tensor.size()
+        # compute the output of the convolutional layer
+        mini_batch_size = input_tensor.shape[0]
         c_out = self.enc_conv_layers(input_tensor)
-        # final_output = torch.mean(torch.mean(c_out, 2), 1).view(-1, 1)
-        lstm_out, self.hidden = self.lstm(c_out.transpose(1, 2))
-        final_output = torch.mean(torch.mean(lstm_out, 1), 1).view(-1, 1)
+        c_out = nn.functional.selu(self.enc_lin(c_out))
+        c_out = nn.functional.selu(self.enc_lin2(c_out.view(mini_batch_size, -1)))
+        z_mean = self.enc_mean(c_out)
+        # compute performance score from latent code
+        final_output = self.classifier(z_mean)  # batch x 1
         return final_output
 
 
@@ -260,7 +343,6 @@ class PCPerformanceVAE(nn.Module):
         # compute the mean and variance
         z_mean = self.enc_mean(c_out)
         # z_log_std = self.enc_log_std(c_out)
-        # (num_layers * num_directions, batch, hidden_size)
         # z_distribution = distributions.Normal(loc=z_mean, scale=torch.exp(z_log_std))
         return z_mean
 

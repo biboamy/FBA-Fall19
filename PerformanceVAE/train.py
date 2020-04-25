@@ -37,6 +37,51 @@ def train_main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
+        tr_loader = torch.utils.data.DataLoader(
+            Data2Torch([trPC, SC], midi_op),
+            worker_init_fn=np.random.seed(manualSeed),
+            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
+            **t_kwargs
+        )
+        va_loader = torch.utils.data.DataLoader(
+            Data2Torch([vaPC, SC], midi_op),
+            worker_init_fn=np.random.seed(manualSeed),
+            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
+            **v_kwargs
+        )
+
+        # build model (function inside model.py)
+        num_in_channels = 1
+        if model_choose == 'PerformanceVAE':
+            model = PCPerformanceVAE(
+                input_size=chunk_size,
+                num_in_channels=num_in_channels,
+                dropout_prob=dropout_prob,
+                z_dim=z_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                num_conv_features=num_conv_features
+            )
+        elif model_choose == 'PerformanceEncoder':
+            if input_type == 'w_score':
+                num_in_channels = 2
+            model = PCPerformanceEncoder(
+                input_size=chunk_size,
+                num_in_channels=num_in_channels,
+                dropout_prob=dropout_prob,
+                z_dim=z_dim,
+                kernel_size=kernel_size,
+                stride=stride,
+                num_conv_features=num_conv_features
+            )
+        elif model_choose == 'PCConvNet':
+            input_type = 'no_score'
+            model = PCConvNet()
+        else:
+            raise ValueError("Invalid model type.")
+        if torch.cuda.is_available():
+            model.cuda()
+
         model_name = f'{model_choose}_' \
                      f'batch{batch_size}_' \
                      f'lr{lr}_midi{midi_op}_' \
@@ -55,48 +100,6 @@ def train_main():
         out_model_fn = f'./model/{model_choose}/{model_name}/'
         if not os.path.exists(out_model_fn):
             os.makedirs(out_model_fn)
-
-        tr_loader = torch.utils.data.DataLoader(
-            Data2Torch([trPC, SC], midi_op),
-            worker_init_fn=np.random.seed(manualSeed),
-            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
-            **t_kwargs
-        )
-        va_loader = torch.utils.data.DataLoader(
-            Data2Torch([vaPC, SC], midi_op),
-            worker_init_fn=np.random.seed(manualSeed),
-            collate_fn=partial(my_collate, [process_collate, sample_num, chunk_size]),
-            **v_kwargs
-        )
-
-        # build model (function inside model.py)
-        num_in_channels = 1
-        if input_type == 'w_score':
-            num_in_channels = 2
-        if model_choose == 'PerformanceVAE':
-            model = PCPerformanceVAE(
-                input_size=chunk_size,
-                num_in_channels=num_in_channels,
-                dropout_prob=dropout_prob,
-                z_dim=z_dim,
-                kernel_size=kernel_size,
-                stride=stride,
-                num_conv_features=num_conv_features
-            )
-        elif model_choose == 'PerformanceEncoder':
-            model = PCPerformanceEncoder(
-                input_size=chunk_size,
-                num_in_channels=num_in_channels,
-                dropout_prob=dropout_prob,
-                z_dim=z_dim,
-                kernel_size=kernel_size,
-                stride=stride,
-                num_conv_features=num_conv_features
-            )
-        else:
-            raise ValueError("Invalid model type.")
-        if torch.cuda.is_available():
-            model.cuda()    
 
         # start training (function inside trainer.py)
         trainer = Trainer(
@@ -120,6 +123,7 @@ if __name__ == "__main__":
     # string
     parser.add_argument("--midi_op", type=str, default=midi_op)
     parser.add_argument("--process_collate", type=str, default=process_collate)
+    parser.add_argument("--input_type", type=str, default=input_type)
 
     parser.add_argument("--band", type=str, default=band)
     parser.add_argument("--split", type=str, default=split)
@@ -146,6 +150,7 @@ if __name__ == "__main__":
     # overwrite params
     midi_op = args.midi_op
     process_collate = args.process_collate
+    input_type = args.input_type
     band = args.band
     split = args.split
     score_choose = args.score_choose
@@ -161,5 +166,7 @@ if __name__ == "__main__":
     stride = args.stride
     num_conv_features = args.num_conv_features
 
-    train_main()
-    eval_main()
+    for s in range(0, 2):
+        score_choose = s
+        train_main()
+        eval_main()
