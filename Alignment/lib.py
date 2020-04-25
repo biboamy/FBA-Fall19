@@ -132,9 +132,9 @@ class Data2Torch(Dataset):
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
             align = self.align[year][id]
-            oup = [mXPC, mXSC, mY, align]
             if normalize:
                 mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
+            oup = [mXPC, mXSC, mY, align]
         else:
             raise ValueError('Please input the correct model')
 

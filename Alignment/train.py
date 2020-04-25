@@ -19,7 +19,7 @@ torch.backends.cudnn.deterministic = True
 def main():
 
     # load training and validation data (function inside lib.py)
-    trPC, vaPC, SC = load_data(band, feat, midi_op)
+    trPC, vaPC, SC = load_data(band)
 
     for i in range(0,10):
 
@@ -47,11 +47,6 @@ def main():
         out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
         if not os.path.exists(out_model_fn):
             os.makedirs(out_model_fn)
-
-        # if resize the midi to fit the length of audio
-        resample = False
-        if midi_op == 'resize':
-            resample = True
 
         # prepare dataloader (function inside lib.py)
         t_kwargs = {'batch_size': batch_size, 'num_workers': num_workers, 'shuffle': shuffle, 'pin_memory': True,'drop_last': True}
