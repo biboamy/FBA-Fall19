@@ -4,8 +4,8 @@ PATH_FBA_MIDI = "/media/Data/fall19/data/midi/"
 PATH_FBA_MTX = "/media/Data/fall19/data/matrix/"
 PATH_FBA_SPLIT = "/media/Data/split_dill/"
 
-band = "middle"
-split = "new" # old: 2013~2015, new: 2013~2018
+band = "symphonic"
+split = "old" # old: 2013~2015, new: 2013~2018
 
 data_all_pc = "{}_2_pc_6_fix.dill"
 
@@ -15,14 +15,16 @@ data_test_pc = {"old": "{}_2_pc_3_test_oldsplit.dill", "new": "{}_2_pc_6_test.di
 
 midi_aligned_s = "{}_2_midi_aligned_s_6.dill"
 
+# data loader parameters
 feat = 'pitch contour' # fixed
 midi_op = 'aligned_s' # fixed
 model_choose = 'CRNN' # CNN CRNN
-score_choose = 0 # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
+score_choose = 2 # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
+normalize = True # WARNING
 
 # training parameters
 batch_size = 32
-num_workers = 2 # fixed
+num_workers = 1 # fixed
 shuffle = True # fixed
 epoch = 1000 # fixed
 lr = 0.05

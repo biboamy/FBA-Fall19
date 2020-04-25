@@ -17,7 +17,7 @@ def load_data(band='middle'):
 
     return trPC, vaPC
 
-def load_test_data(matrix_path, band='middle'):
+def load_test_data(band='middle'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
 
@@ -31,7 +31,7 @@ class Data2Torch(Dataset):
         self.data = data[0]
 
     def __getitem__(self, index):
-        oup = self.data[index]['matrix']
+        oup = self.data[index]['matrix'] / 7
         score = self.data[index]['ratings'][score_choose]
 
         return torch.from_numpy(oup).float(), torch.from_numpy(np.array([score])).float()

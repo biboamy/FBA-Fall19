@@ -79,7 +79,7 @@ class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size
             )
         
         self.classifier = nn.Sequential(
-            nn.Linear(196, 128), # first dim need to be determined
+            nn.Linear(64, 128), # first dim need to be determined
             nn.ReLU(),
             nn.Dropout(),
             #nn.Linear(1024, 1024),

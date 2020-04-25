@@ -18,7 +18,10 @@ torch.backends.cudnn.deterministic = True
 
 def main():
 
-    for i in range(0,12):
+    # load training and validation data (function inside lib.py)
+    trPC, vaPC, SC = load_data(band, feat, midi_op)
+
+    for i in range(0,10):
 
         manualSeed = i
         np.random.seed(manualSeed)
@@ -28,9 +31,9 @@ def main():
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 
-        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}_{}{}_{}'.format(loss_func, batch_size, lr, midi_op, \
+        model_name = '{}_batch{}_lr{}_midi{}_{}_sample{}_chunksize{}_{}_{}{}_score{}_NORM_{}'.format(loss_func, batch_size, lr, midi_op, \
                                                                                 process_collate, sample_num, chunk_size, \
-                                                                                model_choose, band, split, manualSeed)
+                                                                                model_choose, band, split, score_choose, manualSeed)
         #'Similarity_batch16_lr0.001_midialigneds_windowChunk1sample10sec_CNN'
 
         print('batch_size: {}, num_workers: {}, epoch: {}, lr: {}, model_name: {}'.format(batch_size, num_workers, epoch, lr, model_name))
@@ -44,9 +47,6 @@ def main():
         out_model_fn = './model/%d%d%d/%s/'%(date.year,date.month,date.day,model_name)
         if not os.path.exists(out_model_fn):
             os.makedirs(out_model_fn)
-
-        # load training and validation data (function inside lib.py)
-        trPC, vaPC, SC = load_data(band, feat, midi_op)
 
         # if resize the midi to fit the length of audio
         resample = False

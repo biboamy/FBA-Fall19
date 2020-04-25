@@ -64,7 +64,14 @@ def check_failed_perfs_and_remove(band):
             dill.dump(list(PC), f)
 
     if band == 'symphonic':
-        fail_list = [('2017', 78947), ('2017', 78952), ('2017', 79009), ('2017', 79013), ('2017', 79029), ('2017', 79061), ('2017', 79062), ('2017', 79068), ('2017', 79069), ('2017', 79094), ('2017', 79220), ('2017', 79221), ('2017', 79249), ('2017', 79277), ('2017', 79280), ('2017', 79284), ('2017', 79285), ('2017', 79287), ('2017', 79316), ('2017', 79318), ('2017', 79320), ('2017', 79321), ('2017', 79376), ('2017', 79451), ('2017', 79453), ('2017', 79820), ('2017', 79823), ('2017', 79887), ('2017', 80008), ('2017', 80309), ('2017', 80340), ('2017', 80358), ('2017', 80361), ('2017', 80418), ('2017', 80451), ('2017', 80460), ('2017', 80461), ('2017', 80462), ('2017', 80481)]
+        fail_list = [('2017', 78947), ('2017', 78952), ('2017', 79009), ('2017', 79013), ('2017', 79029),
+                     ('2017', 79061), ('2017', 79062), ('2017', 79068), ('2017', 79069), ('2017', 79094),
+                     ('2017', 79220), ('2017', 79221), ('2017', 79249), ('2017', 79277), ('2017', 79280),
+                     ('2017', 79284), ('2017', 79285), ('2017', 79287), ('2017', 79316), ('2017', 79318),
+                     ('2017', 79320), ('2017', 79321), ('2017', 79376), ('2017', 79451), ('2017', 79453),
+                     ('2017', 79820), ('2017', 79823), ('2017', 79887), ('2017', 80008), ('2017', 80309),
+                     ('2017', 80340), ('2017', 80358), ('2017', 80361), ('2017', 80418), ('2017', 80451),
+                     ('2017', 80460), ('2017', 80461), ('2017', 80462), ('2017', 80481)]
 
         fail_idxs = []
 
@@ -75,10 +82,12 @@ def check_failed_perfs_and_remove(band):
         for i in np.arange(len(PC)):
             perf = PC[i]
             # print(perf['year'], perf['student_id'])
-            if (perf['year'], perf['student_id']) in fail_list:
+            if (perf['year'], perf['student_id']) in fail_list or len(perf['pitch_contour']) < 2010:
+                print(perf['year'], perf['student_id'])
                 # t = computeDistanceMatrixAndAlignment(perf, SC)
                 fail_idxs.append(i)
 
+        print(len(fail_idxs))
         fail_idxs = np.array(fail_idxs).astype(int)
         mask = np.ones(len(PC), dtype=bool)
         mask[fail_idxs] = False
@@ -89,7 +98,7 @@ def check_failed_perfs_and_remove(band):
         with open(PATH_FBA_DILL + 'symphonic_2_pc_6_fix.dill', 'wb') as f:
             dill.dump(list(PC), f)
 
-# check_failed_perfs_and_remove('symphonic')
+check_failed_perfs_and_remove('symphonic')
 
 # dillFile = '/media/Data/saved_dill/symphonic_2_pc_6_fix.dill'
 # check_num_by_year(dillFile)

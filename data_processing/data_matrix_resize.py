@@ -9,6 +9,7 @@ INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
 SEGMENT = 2
 
 split = "old"
+
 if split == "old":
     YEAR = ['2013', '2014', '2015']
     postfix = "_oldsplit" # new: "", old: "_oldsplit"

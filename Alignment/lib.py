@@ -29,6 +29,18 @@ def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='res1
 
     return missing_list
 
+def normalize_pc_and_sc(pc, sc):
+    silence_pc = (pc < 1)
+    pc[pc < 1] = 1
+
+    ret_pc = 69 + 12 * np.log2(pc / 440);
+    ret_pc[silence_pc] = 0
+
+    ret_pc = ret_pc / 128
+    sc = sc / 128
+
+    return ret_pc, sc
+
 def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
@@ -121,7 +133,8 @@ class Data2Torch(Dataset):
             mXSC = torch.from_numpy(SC).float()
             align = self.align[year][id]
             oup = [mXPC, mXSC, mY, align]
-
+            if normalize:
+                mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
         else:
             raise ValueError('Please input the correct model')
 
