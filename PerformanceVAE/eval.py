@@ -136,7 +136,7 @@ def eval_main():
     results_dir = './results'
     results_fp = os.path.join(
         results_dir,
-        model_n + '_results_dict.json'
+        model_n + f'{band}{split}{score_choose}_results_dict.json'
     )
     if not os.path.exists(os.path.dirname(results_fp)):
         os.makedirs(os.path.dirname(results_fp))

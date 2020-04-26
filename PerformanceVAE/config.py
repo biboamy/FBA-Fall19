@@ -40,7 +40,11 @@ z_dim = 16
 kernel_size = 7
 stride = 1
 num_conv_features = 4
-input_type = 'w_score'  # 'w_score', 'no_score'
+
+if model_choose == 'PerformanceEncoder':
+    input_type = 'no_score'
+else:
+    input_type = 'w_score'
 
 # normalization params
 pitch_norm_coeff = 12543.854   # 4186
