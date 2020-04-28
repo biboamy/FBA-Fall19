@@ -33,7 +33,7 @@ def train_main():
         np.random.seed(manualSeed)
         random.seed(manualSeed)
         torch.manual_seed(manualSeed)
-        # if you are suing GPU
+        # if you are using GPU
         torch.cuda.manual_seed(manualSeed)
         torch.cuda.manual_seed_all(manualSeed)
 

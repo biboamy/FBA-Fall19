@@ -49,13 +49,13 @@ class PCConvNet(nn.Module):
         self.hidden_size = 16
         self.n_layers = 1
         self.classifier = nn.Sequential(
-            nn.Linear(self.n2_features, 2 * self.n2_features),
+            nn.Linear(self.n2_features, 1),
             nn.ReLU(),
-            nn.Linear(2 * self.n2_features, 1),
-            nn.ReLU()
         )
         if self.model_choose == 'CRNN':
             self.lstm = nn.GRU(self.n2_features, self.hidden_size, self.n_layers, batch_first=True)
+
+        # self.param_initialization()
 
     def forward(self, input):
         """
@@ -82,6 +82,15 @@ class PCConvNet(nn.Module):
             raise ValueError('Please input the correct model')
         final_output = self.classifier(final_output)
         return final_output
+
+    def param_initialization(self):
+        """
+        Initializes the network params
+        :return:
+        """
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nn.init.sparse_(param, sparsity=0.1)
 
 
 class PCPerformanceEncoder(nn.Module):
@@ -141,10 +150,8 @@ class PCPerformanceEncoder(nn.Module):
         self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
 
         self.classifier = nn.Sequential(
-            nn.Linear(self.z_dim, 2 * self.z_dim),
+            nn.Linear(self.z_dim, 1),
             nn.SELU(),
-            nn.Linear(2 * self.z_dim, 1),
-            nn.SELU()
         )
 
     def xavier_initialization(self):
@@ -280,10 +287,8 @@ class PCPerformanceVAE(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(self.z_assess, 2 * self.z_assess),
+            nn.Linear(self.z_assess, 1),
             nn.SELU(),
-            nn.Linear(2 * self.z_assess, 1),
-            nn.SELU()
         )
 
         # self.xavier_initialization()
