@@ -165,7 +165,5 @@ if __name__ == "__main__":
     stride = args.stride
     num_conv_features = args.num_conv_features
 
-    for s in range(0, 3):
-        score_choose = s
-        train_main()
-        eval_main()
+    train_main()
+    eval_main()

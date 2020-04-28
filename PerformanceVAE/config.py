@@ -42,9 +42,9 @@ stride = 1
 num_conv_features = 4
 
 if model_choose == 'PerformanceEncoder':
-    input_type = 'no_score'
-else:
     input_type = 'w_score'
+else:
+    input_type = 'no_score'
 
 # normalization params
 pitch_norm_coeff = 12543.854   # 4186
