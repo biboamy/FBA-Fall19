@@ -109,59 +109,41 @@ class PCPerformanceEncoder(nn.Module):
     ):
         super(PCPerformanceEncoder, self).__init__()
         # initialize interal parameters
-        self.input_size = input_size
-        self.conv_kernel_size = kernel_size
-        self.conv_stride = 1
-        self.num_rnn_rollouts = 32
-        self.num_conv_features = num_conv_features
-        self.z_dim = z_dim
+        self.kernel_size = 7
+        self.stride = 3
+        self.n0_features = 4
+        self.n1_features = 8
+        self.n2_features = 16
+        self.num_in_channels = num_in_channels
 
         # define the different convolutional modules
-        self.enc_conv_layers = nn.Sequential(
+        self.conv = nn.Sequential(
             # define the 1st convolutional layer
-            nn.Conv1d(1, self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.BatchNorm1d(self.num_conv_features),
-            nn.SELU(),
-            nn.Dropout(p=dropout_prob),
-
+            nn.Conv1d(self.num_in_channels, self.n0_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n0_features),
+            nn.ReLU(),
+            # nn.Dropout(),
             # define the 2nd convolutional layer
-            nn.Conv1d(self.num_conv_features, 2 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.BatchNorm1d(2 * self.num_conv_features),
-            nn.SELU(),
-            nn.Dropout(p=dropout_prob),
-
+            nn.Conv1d(self.n0_features, self.n1_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n1_features),
+            nn.ReLU(),
+            # nn.Dropout(),
             # define the 3rd convolutional layer
-            nn.Conv1d(2 * self.num_conv_features, 4 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.BatchNorm1d(4 * self.num_conv_features),
-            nn.SELU(),
-            nn.Dropout(p=dropout_prob),
-
-            # define the 4th convolutional layer
-            nn.Conv1d(4 * self.num_conv_features, 8 * self.num_conv_features, self.conv_kernel_size, self.conv_stride),
-            nn.BatchNorm1d(8 * self.num_conv_features),
-            nn.SELU(),
-            nn.Dropout(p=dropout_prob),
+            nn.Conv1d(self.n1_features, self.n2_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n2_features),
+            nn.ReLU(),
+            # nn.Dropout(),
+            # define the final fully connected layer (fully convolutional)
+            nn.Conv1d(self.n2_features, self.n2_features, self.kernel_size, self.stride),
+            nn.BatchNorm1d(self.n2_features),
+            nn.ReLU(),
+            # nn.Dropout()
         )
-
-        # define encoder linear layer
-        self.out_seq_len = self.input_size - 4 * (self.conv_kernel_size - 1)
-        self.enc_lin = nn.Linear(self.out_seq_len, self.num_rnn_rollouts)
-        self.enc_lin2 = nn.Linear(8 * self.num_conv_features * self.num_rnn_rollouts, 2 * self.z_dim)
-        self.enc_mean = nn.Linear(2 * self.z_dim, self.z_dim)
 
         self.classifier = nn.Sequential(
-            nn.Linear(self.z_dim, 1),
-            nn.SELU(),
+            nn.Linear(self.n2_features, 1),
+            nn.LeakyReLU(),
         )
-
-    def xavier_initialization(self):
-        """
-        Initializes the network params
-        :return:
-        """
-        for name, param in self.named_parameters():
-            if 'weight' in name:
-                nn.init.xavier_normal_(param)
 
     def forward(self, input_tensor):
         """
@@ -174,14 +156,9 @@ class PCPerformanceEncoder(nn.Module):
         """
         if len(input_tensor.size()) == 2:
             input_tensor = input_tensor.unsqueeze(1)
-        # compute the output of the convolutional layer
-        mini_batch_size = input_tensor.shape[0]
-        c_out = self.enc_conv_layers(input_tensor)
-        c_out = nn.functional.selu(self.enc_lin(c_out))
-        c_out = nn.functional.selu(self.enc_lin2(c_out.view(mini_batch_size, -1)))
-        z_mean = self.enc_mean(c_out)
-        # compute performance score from latent code
-        final_output = self.classifier(z_mean)  # batch x 1
+        c_out = self.conv(input_tensor)
+        output = torch.mean(c_out, 2)
+        final_output = self.classifier(output)  # batch x 1
         return final_output
 
 
