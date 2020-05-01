@@ -1,7 +1,7 @@
 from sklearn import metrics
 from model import Net
 from lib import load_data, load_test_data, Data2Torch, distance_loss, test_collate
-import os, torch
+import os, torch, json
 from torch.autograd import Variable
 from functools import partial
 import numpy as np
@@ -58,9 +58,10 @@ def main():
                                             collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
     te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
                                             collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-
+    eval_metrics = dict()
     for i in range(0,10):
-        model_name = '2020424/Similarity_batch32_lr0.05_midialigned_s_randomChunk_sample2_chunksize2000_CRNN_symphonicold_score2_NORM_'+str(i)
+        model_name = 'eval_done_nnorm/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}_{}{}_score{}_NORM_' \
+                     .format(process_collate, model_choose, band, split, score_choose) + str(i)
 
         # if resize the midi to fit the length of audio
         resample = False
@@ -79,6 +80,25 @@ def main():
         val_metrics.append(va)
         test_metrics.append(te)
         print(tr, va, te)
+        eval_metrics[i] = (tr, va, te)
+
+    eval_metrics['avg'] = (
+        sum(train_metrics) / len(train_metrics),
+        sum(val_metrics) / len(val_metrics),
+        sum(test_metrics) / len(test_metrics)
+    )
+
+    model_n = "Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}".format(process_collate, model_choose)
+    results_dir = './results'
+    results_fp = os.path.join(
+        results_dir,
+        model_n + f'{band}{split}{score_choose}_results_dict.json'
+    )
+    if not os.path.exists(os.path.dirname(results_fp)):
+        os.makedirs(os.path.dirname(results_fp))
+    with open(results_fp, 'w') as outfile:
+        json.dump(eval_metrics, outfile, indent=2)
+
     print('model :', model_name)
     print('train metrics', sum(train_metrics)/len(train_metrics))
     print('valid metrics', sum(val_metrics)/len(val_metrics))
