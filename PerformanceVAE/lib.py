@@ -21,6 +21,19 @@ def mse_loss(pre, tar):
     return loss
 
 
+def normalize_pc_and_sc(pc, sc):
+    silence_pc = (pc < 1)
+    pc[pc < 1] = 1
+
+    ret_pc = 69 + 12 * np.log2(pc / 440);
+    ret_pc[silence_pc] = 0
+
+    ret_pc = ret_pc / 128
+    sc = sc / 128
+
+    return ret_pc, sc
+
+
 def compute_kld_loss(z_dist, prior_dist, beta=1.0, c=0.0):
     """
 
@@ -129,6 +142,8 @@ class Data2Torch(Dataset):
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
             align = self.align[year][id]
+            if normalize:
+                mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
             oup = [mXPC, mXSC, mY, align]
 
         else:

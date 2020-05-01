@@ -17,7 +17,7 @@ midi_aligned_s = "{}_2_midi_aligned_s_6.dill"
 
 feat = 'pitch contour'  # fixed
 midi_op = 'aligned_s'  # fixed
-model_choose = "PCConvNet"  # 'PerformanceVAE', 'PerformanceEncoder', 'PCConvNet'
+model_choose = "PerformanceEncoder"  # 'PerformanceVAE', 'PerformanceEncoder', 'PCConvNet'
 score_choose = 0  # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
 
 # training parameters
@@ -47,6 +47,7 @@ else:
     input_type = 'no_score'
 
 # normalization params
+normalize = True  # WARNING
 pitch_norm_coeff = 12543.854   # 4186
 midi_norm_coeff = 127.0        # 108
 
