@@ -36,12 +36,8 @@ def evaluate_model(model, dataloader, input_type='w_score'):
     all_targets = []
     for i, (_input) in enumerate(dataloader):
         pitch, score, target = Variable(_input[0].cuda()), Variable(_input[1].cuda()), Variable(_input[2].cuda())
-        pitch = normalize_pitch(
-            pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1)
-        )
-        score = normalize_midi(
-            score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
-        )
+        pitch = pitch.view(pitch.shape[0] * pitch.shape[1], -1).unsqueeze(1)
+        score = score.view(score.shape[0] * score.shape[1], -1).unsqueeze(1)
         if type(model) == PCPerformanceVAE:
             pred = model(pitch)[1]
             all_predictions.extend(pred.squeeze(1).data.cpu().numpy())
