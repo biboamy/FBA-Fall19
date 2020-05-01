@@ -1,5 +1,6 @@
 from sklearn import metrics
 import os
+import json
 import torch
 import random
 from torch.autograd import Variable
@@ -50,20 +51,26 @@ def evaluate_model(model, dataloader, input_type='w_score'):
                 input_tensor = torch.cat((input_tensor, score), 1)
             pred = model(input_tensor).reshape(-1)
             all_predictions.extend(pred.data.cpu().numpy())
+        elif type(model) == PCConvNet:
+            input_tensor = pitch
+            pred = model(input_tensor).reshape(-1)
+            all_predictions.extend(pred.data.cpu().numpy())
         all_targets.extend(target.reshape(-1).data.cpu().numpy())
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 
-def main():
+def eval_main():
     train_metrics, val_metrics, test_metrics = [], [], []
-    model_n = '2020421/'
-    model_n += f'{model_choose}_' \
-                  f'batch{batch_size}_' \
-                  f'lr{lr}_midi{midi_op}_' \
-                  f'{process_collate}_' \
-                  f'sample{sample_num}_' \
-                  f'chunksize{chunk_size}_' \
-                  f'input_type{input_type}'
+    model_n = f'{model_choose}/' \
+              f'{model_choose}_' \
+              f'batch{batch_size}_' \
+              f'lr{lr}_midi{midi_op}_' \
+              f'{process_collate}_' \
+              f'sample{sample_num}_' \
+              f'chunksize{chunk_size}_' \
+              f'input_type{input_type}'
+    print(f'Input Type: {input_type}')
+    print(f'Score Choose: {score_choose}')
     trPC, vaPC, SC = load_data(band, feat, midi_op)
     tePC = load_test_data(band, feat)
 
@@ -77,13 +84,9 @@ def main():
     te_loader = torch.utils.data.DataLoader(
         Data2Torch([tePC, SC], midi_op), collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs
     )
+    eval_metrics = dict()
     for i in range(0, 12):
-        model_name = model_n + f'{band}{split}_{i}'
-
-        # if resize the midi to fit the length of audio
-        resample = False
-        if midi_op == 'resize':
-            resample = True
+        model_name = model_n + f'{band}{split}{score_choose}_{i}'
 
         model_path = './model/'+model_name+'/model'
         num_in_channels = 1
@@ -109,6 +112,8 @@ def main():
                 stride=stride,
                 num_conv_features=num_conv_features
             )
+        elif model_choose == 'PCConvNet':
+            model = PCConvNet()
         if torch.cuda.is_available():
             model.cuda()
         model.load_state_dict(torch.load(model_path)['state_dict'])
@@ -119,7 +124,24 @@ def main():
         val_metrics.append(va)
         test_metrics.append(te)
         print(tr, va, te)
+        eval_metrics[i] = (tr, va, te)
         del model
+
+    eval_metrics['avg'] = (
+        sum(train_metrics)/len(train_metrics),
+        sum(val_metrics) / len(val_metrics),
+        sum(test_metrics) / len(test_metrics)
+    )
+
+    results_dir = './results'
+    results_fp = os.path.join(
+        results_dir,
+        model_n + f'{band}{split}{score_choose}_results_dict.json'
+    )
+    if not os.path.exists(os.path.dirname(results_fp)):
+        os.makedirs(os.path.dirname(results_fp))
+    with open(results_fp, 'w') as outfile:
+        json.dump(eval_metrics, outfile, indent=2)
 
     print('model :', model_n)
     print('train metrics', sum(train_metrics)/len(train_metrics))
@@ -176,4 +198,4 @@ if __name__ == "__main__":
     stride = args.stride
     num_conv_features = args.num_conv_features
 
-    main()
+    eval_main()

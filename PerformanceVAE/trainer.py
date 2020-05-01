@@ -23,11 +23,9 @@ class Trainer:
         self.input_type = input_type
         self.writer = None
         self.log = log
-        self.optimizer = optim.Adam(
-            self.model.parameters(), lr=lr
+        self.optimizer = optim.SGD(
+            self.model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4
         )
-
-        print(f'Start Training #{epoch}')
 
         # configure tensorboardX summary writer
         current = datetime.datetime.now()
@@ -83,13 +81,16 @@ class Trainer:
                     loss_score = mse_loss(vae_out[1], target)
                     # calculate latent loss
                     loss_kld = 0
-                    # loss_kld = compute_kld_loss(
-                    #     vae_out[2], vae_out[3]
-                    # )
                 elif type(self.model) == PCPerformanceEncoder:
                     input_tensor = pitch
                     if self.input_type == 'w_score':
                         input_tensor = torch.cat((input_tensor, score), 1)
+                    asses_score = self.model(input_tensor)
+                    loss_score = mse_loss(asses_score, target)
+                    loss_reconstruct = 0
+                    loss_kld = 0
+                elif type(self.model) == PCConvNet:
+                    input_tensor = pitch
                     asses_score = self.model(input_tensor)
                     loss_score = mse_loss(asses_score, target)
                     loss_reconstruct = 0
@@ -131,8 +132,13 @@ class Trainer:
                         input_tensor = pitch
                         if self.input_type == 'w_score':
                             input_tensor = torch.cat((input_tensor, score), 1)
-                        asses_score = self.model(input_tensor).reshape(-1)
-                        loss_score = mse_loss(asses_score, target.reshape(-1))
+                        asses_score = self.model(input_tensor)
+                        loss_score = mse_loss(asses_score, target)
+                        loss_reconstruct = 0
+                    elif type(self.model) == PCConvNet:
+                        input_tensor = pitch
+                        asses_score = self.model(input_tensor)
+                        loss_score = mse_loss(asses_score, target)
                         loss_reconstruct = 0
                     else:
                         raise ValueError('invalid model type')
