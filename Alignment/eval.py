@@ -1,7 +1,7 @@
 from sklearn import metrics
 from model import Net
 from lib import load_data, load_test_data, Data2Torch, distance_loss, test_collate
-import os, torch
+import os, torch, json
 from torch.autograd import Variable
 from functools import partial
 import numpy as np
@@ -35,9 +35,11 @@ def evaluate_model(model, dataloader):
         target = target.view(-1,1)
         pitch_v, score_v = model(pitch.reshape(-1,pitch.shape[-1]), score.reshape(-1,pitch.shape[-1]))
         out = distance_loss(pitch_v, score_v, target.squeeze(1)) [1]
+        # print(out, out.shape, torch.mean(out, 0, keepdim=True).data.cpu().numpy().shape)
         all_predictions.extend(torch.mean(out, 0, keepdim=True).data.cpu().numpy())
         all_targets.extend(torch.mean(target.squeeze(1), 0, keepdim=True).data.cpu().numpy())
         #print(out.detach().data.cpu().numpy(),target.detach().data.cpu().numpy())
+    #print(len(all_predictions))
     return evaluate_classification(np.array(all_targets), np.array(all_predictions))
 
 # DO NOT change the default values if possible
@@ -45,24 +47,26 @@ def evaluate_model(model, dataloader):
 
 def main():
     train_metrics, val_metrics, test_metrics = [], [], []
-    for i in range(0,12):
-        model_name = '2020418/Similarity_batch32_lr0.05_midialigned_s_randomChunk_sample2_chunksize2000_CRNN_new_'+str(i)
+
+    trPC, vaPC, SC = load_data(band, feat, midi_op)
+    tePC = load_test_data(band, feat)
+
+    kwargs = {'num_workers': num_workers, 'pin_memory': True}
+    tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+    va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+    te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
+                                            collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
+    eval_metrics = dict()
+    for i in range(0,10):
+        model_name = 'eval_done_nnorm/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}_{}{}_score{}_NORM_' \
+                     .format(process_collate, model_choose, band, split, score_choose) + str(i)
 
         # if resize the midi to fit the length of audio
         resample = False
         if midi_op == 'resize':
             resample = True
-
-        trPC, vaPC, SC = load_data(band, feat, midi_op)
-        tePC = load_test_data(band, feat)
-
-        kwargs = {'num_workers': num_workers, 'pin_memory': True}
-        tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
-                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-        va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC, SC], midi_op), \
-                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
-        te_loader = torch.utils.data.DataLoader(Data2Torch([tePC, SC], midi_op),
-                                                collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
 
         model_path = './model/'+model_name+'/model'
         model = Net(model_choose)
@@ -76,6 +80,25 @@ def main():
         val_metrics.append(va)
         test_metrics.append(te)
         print(tr, va, te)
+        eval_metrics[i] = (tr, va, te)
+
+    eval_metrics['avg'] = (
+        sum(train_metrics) / len(train_metrics),
+        sum(val_metrics) / len(val_metrics),
+        sum(test_metrics) / len(test_metrics)
+    )
+
+    model_n = "Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}".format(process_collate, model_choose)
+    results_dir = './results'
+    results_fp = os.path.join(
+        results_dir,
+        model_n + f'{band}{split}{score_choose}_results_dict.json'
+    )
+    if not os.path.exists(os.path.dirname(results_fp)):
+        os.makedirs(os.path.dirname(results_fp))
+    with open(results_fp, 'w') as outfile:
+        json.dump(eval_metrics, outfile, indent=2)
+
     print('model :', model_name)
     print('train metrics', sum(train_metrics)/len(train_metrics))
     print('valid metrics', sum(val_metrics)/len(val_metrics))

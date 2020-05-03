@@ -29,6 +29,18 @@ def check_missing_alignedmidi(band='middle', feat='pitch contour', midi_op='res1
 
     return missing_list
 
+def normalize_pc_and_sc(pc, sc):
+    silence_pc = (pc < 1)
+    pc[pc < 1] = 1
+
+    ret_pc = 69 + 12 * np.log2(pc / 440);
+    ret_pc[silence_pc] = 0
+
+    ret_pc = ret_pc / 128
+    sc = sc / 128
+
+    return ret_pc, sc
+
 def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
@@ -120,8 +132,9 @@ class Data2Torch(Dataset):
             SC = np.argmax(SC, axis=0)
             mXSC = torch.from_numpy(SC).float()
             align = self.align[year][id]
+            if normalize:
+                mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
             oup = [mXPC, mXSC, mY, align]
-
         else:
             raise ValueError('Please input the correct model')
 
@@ -322,7 +335,7 @@ def test_collate(collate_params, batch):
 def distance_loss(pitch_v, score_v, target):
 
     cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-    pred = cos(pitch_v, score_v)
+    pred = 1 - cos(pitch_v, score_v)
 
     loss_func = nn.MSELoss()
     loss = loss_func(pred, target.reshape(-1))

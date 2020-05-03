@@ -22,8 +22,7 @@ def load_test_data(band='middle'):
     # Currently only allow pitch contour as feature
 
     # Read features from .dill files
-    tePC = dill.load(open('/media/Data/fall19/data/matrix/matrix_fixed_test900.dill', 'rb'))
-    #tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
+    tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
 
     return tePC
 
@@ -32,7 +31,7 @@ class Data2Torch(Dataset):
         self.data = data[0]
 
     def __getitem__(self, index):
-        oup = self.data[index]['matrix']
+        oup = self.data[index]['matrix'] / 7
         score = self.data[index]['ratings'][score_choose]
 
         if isNorm:

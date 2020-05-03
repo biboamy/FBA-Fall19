@@ -23,7 +23,7 @@ else:
 
 def generate_newdata_newsplit(band):
     dill_name = {'middle': 'middle_2_pc_6_fix.dill', 'symphonic': 'symphonic_2_pc_6_fix.dill'}
-    total_name = {'middle':2611, 'symphonic': 2997}
+    total_name = {'middle':2611, 'symphonic': 2994}
 
     np.random.seed(1)
 
@@ -98,13 +98,13 @@ def generate_newdata_oldsplit(band):
     valid_data = perf_data_all_new[np.array(valid_idx).astype(int)]
     test_data = perf_data_all_new[np.array(test_idx).astype(int)]
 
-    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-        dill.dump(train_data, f)
-    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-        dill.dump(test_data, f)
-    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-        dill.dump(valid_data, f)
+    # with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+    #     dill.dump(train_data, f)
+    # with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+    #     dill.dump(test_data, f)
+    # with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+    #     dill.dump(valid_data, f)
 
-# generate_newdata_newsplit('symphonic')
+# generate_newdata_newsplit('middle')
 
-# generate_newdata_oldsplit('symphonic')
+generate_newdata_oldsplit('middle')
