@@ -28,8 +28,8 @@ def normalize_pc_and_sc(pc, sc):
     ret_pc = 69 + 12 * np.log2(pc / 440);
     ret_pc[silence_pc] = 0
 
-    ret_pc = ret_pc / 128
-    sc = sc / 128
+    ret_pc = ret_pc / 128.0
+    sc = sc / 128.0
 
     return ret_pc, sc
 
