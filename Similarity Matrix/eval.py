@@ -25,7 +25,7 @@ def evaluate_classification(targets, predictions):
     predictions = np.round(predictions).astype(int)
     accuracy = metrics.accuracy_score(targets, predictions)
 
-    return np.round(r2, decimals=3), np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
+    return np.round(r2, decimals=3) #, np.round(accuracy, decimals=3), np.round(corrcoef, decimals=3), np.round(p, decimals=3)
 
 def evaluate_model(model, dataloader):
     all_predictions = []
@@ -42,8 +42,14 @@ def evaluate_model(model, dataloader):
 
 def main(model_name_e):
 
+    train_metrics, val_metrics, test_metrics = [], [], []
+    test_metrics_AltoSax, test_metrics_BbClarinet, test_metrics_Flute = [], [], []
+
     trPC, vaPC = load_data(band)
     tePC = load_test_data(band)
+    teAltoSaxPC = load_test_data(band, 'Alto Saxophone')
+    teBbClarinetPC = load_test_data(band, 'Bb Clarinet')
+    teFlutePC = load_test_data(band, 'Flute')
 
     kwargs = {'batch_size': batch_size, 'pin_memory': True}
     #kwargs = {'pin_memory': True}
@@ -51,13 +57,14 @@ def main(model_name_e):
     va_loader = torch.utils.data.DataLoader(Data2Torch([vaPC]), **kwargs)
     te_loader = torch.utils.data.DataLoader(Data2Torch([tePC]), **kwargs)
 
-    tr = []
-    va = []
-    te = []
+    te_AltoSax_loader = torch.utils.data.DataLoader(Data2Torch([teAltoSaxPC]), **kwargs)
+    te_BbClarinet_loader = torch.utils.data.DataLoader(Data2Torch([teBbClarinetPC]), **kwargs)
+    te_Flute_loader = torch.utils.data.DataLoader(Data2Torch([teFlutePC]), **kwargs)
 
     print(model_name_e)
     result = {}
 
+    eval_metrics = dict()
     for i in range(0, 10):
         if True:
             model_name = model_name_e+'_'+str(i)
@@ -79,25 +86,40 @@ def main(model_name_e):
                 model.model.conv[j].bn3.track_running_stats = False
 
             print('model :', model_name)
-            train_metrics = evaluate_model(model, tr_loader)
+            tr = evaluate_model(model, tr_loader)
             print('train metrics', train_metrics)
-            val_metrics = evaluate_model(model, va_loader)
+            va = evaluate_model(model, va_loader)
             print('valid metrics', val_metrics)
-            test_metrics = evaluate_model(model, te_loader)
+            te = evaluate_model(model, te_loader)
             print('test metrics', test_metrics)
             print('--------------------------------------------------')
+            te_AltoSax = evaluate_model(model, te_AltoSax_loader)
+            te_BbClarinet = evaluate_model(model, te_BbClarinet_loader)
+            te_Flute = evaluate_model(model, te_Flute_loader)
 
-            result[str(i)] = [train_metrics[0],val_metrics[0],test_metrics[0]]
+            train_metrics.append(tr)
+            val_metrics.append(va)
+            test_metrics.append(te)
 
-            tr.extend([train_metrics[0]])
-            va.extend([val_metrics[0]])
-            te.extend([test_metrics[0]])
-    print(tr, max(tr), min(tr), statistics.median(tr))
-    print(va, max(va), min(va), statistics.median(va))
-    print(te, max(te), min(te), statistics.median(te))
-    print("{:.3f}, {:.3f}, {:.3f}" .format(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)))
+            test_metrics_AltoSax.append(te_AltoSax)
+            test_metrics_BbClarinet.append(te_BbClarinet)
+            test_metrics_Flute.append(te_Flute)
 
-    result['avg'] = [sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)]
+            print(tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
+            eval_metrics[i] = (tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
+
+    eval_metrics['avg'] = (
+        sum(train_metrics) / len(train_metrics),
+        sum(val_metrics) / len(val_metrics),
+        sum(test_metrics) / len(test_metrics),
+        sum(test_metrics_AltoSax) / len(test_metrics_AltoSax),
+        sum(test_metrics_BbClarinet) / len(test_metrics_BbClarinet),
+        sum(test_metrics_Flute) / len(test_metrics_Flute)
+    )
+
+    print("{:.3f}, {:.3f}, {:.3f}" .format(sum(train_metrics) / len(train_metrics), \
+                                           sum(val_metrics) / len(val_metrics), sum(test_metrics) / len(test_metrics)))
+
     with open('result/'+model_name_e.split('/')[1]+'.json', 'w') as outfile:
         json.dump(result, outfile)
 
