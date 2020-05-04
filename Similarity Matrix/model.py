@@ -19,7 +19,7 @@ class block(nn.Module):
         out = self.conv2(F.relu(self.bn2(out)))
         #out = self.conv2(F.relu(out))
         out = self.bn3(out)
-        #out += self.sk(x)
+        out += self.sk(x)
         return out
 
 class ConvNet_Fixed(nn.Module): # The same ConvNet with fixed input size

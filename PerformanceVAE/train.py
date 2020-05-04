@@ -9,7 +9,7 @@ from lib import *
 from config import *
 from eval import eval_main
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # change
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # change
 
 # DO NOT change the default values if possible
 # except during DEBUGGING

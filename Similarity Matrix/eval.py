@@ -6,10 +6,10 @@ from torch.autograd import Variable
 import numpy as np
 from scipy.stats import pearsonr
 import statistics
-
+import json
 from config import *
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' 
 
 def evaluate_classification(targets, predictions):
     print(targets.max(),targets.min(),predictions.max(),predictions.min(), len(predictions))
@@ -56,6 +56,7 @@ def main(model_name_e):
     te = []
 
     print(model_name_e)
+    result = {}
 
     for i in range(0, 10):
         if True:
@@ -69,13 +70,13 @@ def main(model_name_e):
             model.load_state_dict(torch.load(model_path)['state_dict'])
             model.eval()
 
-            for i in [1, 4, 7]:
-                model.model.conv[i].bn1.momentum = 0
-                model.model.conv[i].bn2.momentum = 0
-                model.model.conv[i].bn3.momentum = 0
-                model.model.conv[i].bn1.track_running_stats = False
-                model.model.conv[i].bn2.track_running_stats = False
-                model.model.conv[i].bn3.track_running_stats = False
+            for j in [1, 4, 7]:
+                model.model.conv[j].bn1.momentum = 0
+                model.model.conv[j].bn2.momentum = 0
+                model.model.conv[j].bn3.momentum = 0
+                model.model.conv[j].bn1.track_running_stats = False
+                model.model.conv[j].bn2.track_running_stats = False
+                model.model.conv[j].bn3.track_running_stats = False
 
             print('model :', model_name)
             train_metrics = evaluate_model(model, tr_loader)
@@ -86,6 +87,8 @@ def main(model_name_e):
             print('test metrics', test_metrics)
             print('--------------------------------------------------')
 
+            result[str(i)] = [train_metrics[0],val_metrics[0],test_metrics[0]]
+
             tr.extend([train_metrics[0]])
             va.extend([val_metrics[0]])
             te.extend([test_metrics[0]])
@@ -93,6 +96,10 @@ def main(model_name_e):
     print(va, max(va), min(va), statistics.median(va))
     print(te, max(te), min(te), statistics.median(te))
     print("{:.3f}, {:.3f}, {:.3f}" .format(sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)))
+
+    result['avg'] = [sum(tr)/len(tr),sum(va)/len(va),sum(te)/len(te)]
+    with open('result/'+model_name_e.split('/')[1]+'.json', 'w') as outfile:
+        json.dump(result, outfile)
 
 if __name__ == "__main__":
     import argparse
