@@ -57,6 +57,8 @@ def evaluate_model(model, dataloader, input_type='w_score'):
 
 def eval_main():
     train_metrics, val_metrics, test_metrics = [], [], []
+    test_metrics_AltoSax, test_metrics_BbClarinet, test_metrics_Flute = [], [], []
+
     model_n = f'{model_choose}/' \
               f'{model_choose}_' \
               f'batch{batch_size}_' \
@@ -67,8 +69,13 @@ def eval_main():
               f'input_type{input_type}'
     print(f'Input Type: {input_type}')
     print(f'Score Choose: {score_choose}')
+
     trPC, vaPC, SC = load_data(band, feat, midi_op)
     tePC = load_test_data(band, feat)
+
+    teAltoSaxPC = load_test_data(band, feat, 'Alto Saxophone')
+    teBbClarinetPC = load_test_data(band, feat, 'Bb Clarinet')
+    teFlutePC = load_test_data(band, feat, 'Flute')
 
     kwargs = {'num_workers': num_workers, 'pin_memory': True}
     tr_loader = torch.utils.data.DataLoader(
@@ -80,6 +87,17 @@ def eval_main():
     te_loader = torch.utils.data.DataLoader(
         Data2Torch([tePC, SC], midi_op), collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs
     )
+
+    te_AltoSax_loader = torch.utils.data.DataLoader(Data2Torch([teAltoSaxPC, SC], midi_op),
+                                                    collate_fn=partial(test_collate, [overlap_flag, chunk_size]),
+                                                    **kwargs)
+    te_BbClarinet_loader = torch.utils.data.DataLoader(Data2Torch([teBbClarinetPC, SC], midi_op),
+                                                       collate_fn=partial(test_collate, [overlap_flag, chunk_size]),
+                                                       **kwargs)
+    te_Flute_loader = torch.utils.data.DataLoader(Data2Torch([teFlutePC, SC], midi_op),
+                                                  collate_fn=partial(test_collate, [overlap_flag, chunk_size]),
+                                                  **kwargs)
+
     eval_metrics = dict()
     for i in range(0, 12):
         model_name = model_n + f'{band}{split}{score_choose}_{i}'
@@ -113,20 +131,34 @@ def eval_main():
         if torch.cuda.is_available():
             model.cuda()
         model.load_state_dict(torch.load(model_path)['state_dict'])
+
         tr = evaluate_model(model, tr_loader)[0]
         va = evaluate_model(model, va_loader)[0]
         te = evaluate_model(model, te_loader)[0]
+
+        te_AltoSax = evaluate_model(model, te_AltoSax_loader)
+        te_BbClarinet = evaluate_model(model, te_BbClarinet_loader)
+        te_Flute = evaluate_model(model, te_Flute_loader)
+
         train_metrics.append(tr)
         val_metrics.append(va)
         test_metrics.append(te)
-        print(tr, va, te)
-        eval_metrics[i] = (tr, va, te)
+
+        test_metrics_AltoSax.append(te_AltoSax)
+        test_metrics_BbClarinet.append(te_BbClarinet)
+        test_metrics_Flute.append(te_Flute)
+
+        print(tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
+        eval_metrics[i] = (tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
         del model
 
     eval_metrics['avg'] = (
-        sum(train_metrics)/len(train_metrics),
+        sum(train_metrics) / len(train_metrics),
         sum(val_metrics) / len(val_metrics),
-        sum(test_metrics) / len(test_metrics)
+        sum(test_metrics) / len(test_metrics),
+        sum(test_metrics_AltoSax) / len(test_metrics_AltoSax),
+        sum(test_metrics_BbClarinet) / len(test_metrics_BbClarinet),
+        sum(test_metrics_Flute) / len(test_metrics_Flute)
     )
 
     results_dir = './results'
@@ -143,6 +175,11 @@ def eval_main():
     print('train metrics', sum(train_metrics)/len(train_metrics))
     print('valid metrics', sum(val_metrics)/len(val_metrics))
     print('test metrics', sum(test_metrics)/len(test_metrics))
+
+    print('test metrics AltoSax', sum(test_metrics_AltoSax) / len(test_metrics_AltoSax))
+    print('test metrics BbClarinet', sum(test_metrics_BbClarinet) / len(test_metrics_BbClarinet))
+    print('test metrics Flute', sum(test_metrics_Flute) / len(test_metrics_Flute))
+
     print('--------------------------------------------------')
 
 

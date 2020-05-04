@@ -67,14 +67,17 @@ def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     return trPC, vaPC, SC
 
 
-def load_test_data(band='middle', feat='pitch contour'):
+def load_test_data(band='middle', feat='pitch contour', instrument='all'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
     import dill
     assert(feat=='pitch contour')
 
     # test
-    tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
+    if instrument == 'all':
+        tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
+    else:
+        tePC = np.array(dill.load(open(PATH_FBA_SPLIT + '{}_2_pc_{}_test_{}.dill'.format(band, 6, instrument), 'rb')))
 
     return tePC
 
