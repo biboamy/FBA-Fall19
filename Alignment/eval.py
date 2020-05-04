@@ -60,9 +60,10 @@ def main():
                                             collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
     eval_metrics = dict()
     for i in range(0,10):
-        model_name = 'eval_done_nnorm/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}_{}{}_score{}_NORM_' \
+        model_name = '202052/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}_{}{}_score{}_NORM_' \
                      .format(process_collate, model_choose, band, split, score_choose) + str(i)
 
+        #model_name = model_choose + '_' + str(i)
         # if resize the midi to fit the length of audio
         resample = False
         if midi_op == 'resize':
@@ -98,7 +99,7 @@ def main():
         os.makedirs(os.path.dirname(results_fp))
     with open(results_fp, 'w') as outfile:
         json.dump(eval_metrics, outfile, indent=2)
-
+    print(len(train_metrics), len(val_metrics), len(test_metrics))
     print('model :', model_name)
     print('train metrics', sum(train_metrics)/len(train_metrics))
     print('valid metrics', sum(val_metrics)/len(val_metrics))
