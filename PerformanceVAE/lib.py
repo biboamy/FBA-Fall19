@@ -28,8 +28,8 @@ def normalize_pc_and_sc(pc, sc):
     ret_pc = 69 + 12 * np.log2(pc / 440);
     ret_pc[silence_pc] = 0
 
-    ret_pc = ret_pc / 128
-    sc = sc / 128
+    ret_pc = ret_pc / 128.0
+    sc = sc / 128.0
 
     return ret_pc, sc
 
@@ -67,14 +67,17 @@ def load_data(band='middle', feat='pitch contour', midi_op='res12'):
     return trPC, vaPC, SC
 
 
-def load_test_data(band='middle', feat='pitch contour'):
+def load_test_data(band='middle', feat='pitch contour', instrument='all'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
     import dill
     assert(feat=='pitch contour')
 
     # test
-    tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
+    if instrument == 'all':
+        tePC = np.array(dill.load(open(PATH_FBA_SPLIT + data_test_pc[split].format(band), 'rb')))
+    else:
+        tePC = np.array(dill.load(open(PATH_FBA_SPLIT + '{}_2_pc_{}_test_{}.dill'.format(band, 6, instrument), 'rb')))
 
     return tePC
 

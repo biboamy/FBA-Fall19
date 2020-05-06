@@ -6,7 +6,7 @@ PATH_FBA_SPLIT = "/media/Data/split_dill/"
 
 band = "symphonic" # middle, symphonic
 
-split = "old" # old: 2013~2015, new: 2013~2018
+split = "new" # old: 2013~2015, new: 2013~2018
 
 data_all_pc = "{}_2_pc_6_fix.dill"
 
@@ -23,7 +23,7 @@ lr = 0.05
 
 isNorm = True
 matrix_dim = 900 # resize dim: 400, 600, 900, 1200*, 1600*
-score_choose = 0 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
+score_choose = 2 #0: musicality, 1: note acc, 2: rhythmic acc, 3: tone quality
 
 model_choose = 'ConvNet_Residual_BatchNorm_score'+str(score_choose) #'ConvNet_Fixed'
 

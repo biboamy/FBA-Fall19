@@ -17,12 +17,16 @@ def load_data(band='middle'):
 
     return trPC, vaPC
 
-def load_test_data(band='middle'):
+def load_test_data(band='middle', instrument='all'):
     # Load pitch contours
     # Currently only allow pitch contour as feature
 
     # Read features from .dill files
-    tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
+    # test
+    if instrument == 'all':
+        tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
+    else:
+        tePC = dill.load(open(PATH_FBA_MTX + '"{}_matrix_fixed_test{}_{}.dill"'.format(band, matrix_dim, instrument), 'rb'))
 
     return tePC
 

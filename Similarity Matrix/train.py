@@ -6,7 +6,7 @@ import numpy as np
 
 from config import *
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' # change
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' # change
 
 torch.backends.cudnn.enabled = False 
 torch.backends.cudnn.benchmark = False
@@ -15,7 +15,7 @@ torch.backends.cudnn.deterministic = True
 def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    for i in range(0,10):
+    for i in range(4,10):
         manualSeed = i
         np.random.seed(manualSeed)
         random.seed(manualSeed)

@@ -98,13 +98,40 @@ def generate_newdata_oldsplit(band):
     valid_data = perf_data_all_new[np.array(valid_idx).astype(int)]
     test_data = perf_data_all_new[np.array(test_idx).astype(int)]
 
-    # with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-    #     dill.dump(train_data, f)
-    # with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-    #     dill.dump(test_data, f)
-    # with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
-    #     dill.dump(valid_data, f)
+    with open('{}{}_2_pc_{}_train_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+        dill.dump(train_data, f)
+    with open('{}{}_2_pc_{}_test_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+        dill.dump(test_data, f)
+    with open('{}{}_2_pc_{}_valid_oldsplit.dill'.format(PATH_FBA_SPLIT, band, 3), 'wb') as f:
+        dill.dump(valid_data, f)
+
+def generate_instrument_split(band, split_set='test', split='new'):
+
+    assert (split == 'new')
+
+    data_dill = '{}{}_2_pc_{}_{}.dill'.format(PATH_FBA_SPLIT, band, 6, split_set)
+    perf_data = dill.load(open(data_dill, 'rb'))
+    perf_data = np.array(perf_data)
+
+    perf_inst_data = {}
+
+    for inst in INSTRUMENT:
+        perf_inst_data[inst] = []
+
+    for perf in perf_data:
+        inst = perf['instrumemt']
+        perf_inst_data[inst].append(perf)
+
+    for inst in INSTRUMENT:
+        save_dill = '{}{}_2_pc_{}_{}_{}.dill'.format(PATH_FBA_SPLIT, band, 6, split_set, inst)
+        print(save_dill, len(perf_inst_data[inst]))
+        with open(save_dill, 'wb') as f:
+            dill.dump(perf_inst_data[inst], f)
 
 # generate_newdata_newsplit('middle')
 
-generate_newdata_oldsplit('middle')
+# generate_newdata_oldsplit('middle')
+
+generate_instrument_split('middle')
+
+generate_instrument_split('symphonic')
