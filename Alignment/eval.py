@@ -74,7 +74,7 @@ def main():
 
     eval_metrics = dict()
     for i in range(0,10):
-        model_name = '202052/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}_{}{}_score{}_NORM_' \
+        model_name = '202055/Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize1000_{}_{}{}_score{}_NORM_' \
                      .format(process_collate, model_choose, band, split, score_choose) + str(i)
 
         #model_name = model_choose + '_' + str(i)
@@ -116,7 +116,7 @@ def main():
         sum(test_metrics_Flute) / len(test_metrics_Flute)
     )
 
-    model_n = "Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}".format(process_collate, model_choose)
+    model_n = "Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize1000_{}".format(process_collate, model_choose)
     results_dir = './results'
     results_fp = os.path.join(
         results_dir,
