@@ -55,6 +55,8 @@ def main():
     teBbClarinetPC = load_test_data(band, feat, 'Bb Clarinet')
     teFlutePC = load_test_data(band, feat, 'Flute')
 
+    print(len(teAltoSaxPC), len(teBbClarinetPC), len(teFlutePC))
+
     kwargs = {'num_workers': num_workers, 'pin_memory': True}
     tr_loader = torch.utils.data.DataLoader(Data2Torch([trPC, SC], midi_op), \
                                             collate_fn=partial(test_collate, [overlap_flag, chunk_size]), **kwargs)
@@ -105,22 +107,22 @@ def main():
         test_metrics_Flute.append(te_Flute)
 
         print(tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
-        eval_metrics[i] = (tr, va, te, te_AltoSax, te_BbClarinet, te_Flute)
+        eval_metrics[i] = (te_AltoSax, te_BbClarinet, te_Flute) # (te_AltoSax, te_BbClarinet, te_Flute)
 
     eval_metrics['avg'] = (
-        sum(train_metrics) / len(train_metrics),
-        sum(val_metrics) / len(val_metrics),
-        sum(test_metrics) / len(test_metrics),
+        # sum(train_metrics) / len(train_metrics),
+        # sum(val_metrics) / len(val_metrics),
+        # sum(test_metrics) / len(test_metrics),
         sum(test_metrics_AltoSax) / len(test_metrics_AltoSax),
         sum(test_metrics_BbClarinet) / len(test_metrics_BbClarinet),
         sum(test_metrics_Flute) / len(test_metrics_Flute)
     )
 
     model_n = "Similarity_batch32_lr0.05_midialigned_s_{}_sample2_chunksize2000_{}".format(process_collate, model_choose)
-    results_dir = './results'
+    results_dir = './results_ins'
     results_fp = os.path.join(
         results_dir,
-        model_n + f'{band}{split}{score_choose}_results_dict.json'
+        model_n + f'{band}{split}{score_choose}_results_ins_dict.json'
     )
     if not os.path.exists(os.path.dirname(results_fp)):
         os.makedirs(os.path.dirname(results_fp))

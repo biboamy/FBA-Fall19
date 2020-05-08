@@ -338,7 +338,7 @@ def test_collate(collate_params, batch):
 def distance_loss(pitch_v, score_v, target):
 
     cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-    pred = 1 - cos(pitch_v, score_v)
+    pred = cos(pitch_v, score_v)
 
     loss_func = nn.MSELoss()
     loss = loss_func(pred, target.reshape(-1))
