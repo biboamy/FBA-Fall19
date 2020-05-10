@@ -19,7 +19,7 @@ midi_aligned_s = "{}_2_midi_aligned_s_6.dill"
 feat = 'pitch contour' # fixed
 midi_op = 'aligned_s' # fixed
 model_choose = 'CNN' # CNN CRNN
-score_choose = 0 # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
+score_choose = 2 # 0: musicality, 1: note acc., 2: rhythmic acc. 3: tone quality
 normalize = True # WARNING
 
 # training parameters
