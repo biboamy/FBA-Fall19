@@ -4,4 +4,4 @@ This is the repository for paper **Score-Informed Networks for Music Performance
 
 Paper, poster and video presentation: https://program.ismir2020.net/poster_6-18.html
 
-The audio recordings are provided by [Florida Bandmasters Association] (https://fba.flmusiced.org/).
+The audio recordings are provided by [Florida Bandmasters Association](https://fba.flmusiced.org/).
