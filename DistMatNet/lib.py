@@ -26,7 +26,7 @@ def load_test_data(band='middle', instrument='all'):
     if instrument == 'all':
         tePC = dill.load(open(PATH_FBA_MTX + data_test_mtx[split].format(band, matrix_dim), 'rb'))
     else:
-        tePC = dill.load(open(PATH_FBA_MTX + '"{}_matrix_fixed_test{}_{}.dill"'.format(band, matrix_dim, instrument), 'rb'))
+        tePC = dill.load(open(PATH_FBA_MTX + '"{}_matrix_test{}_{}.dill"'.format(band, matrix_dim, instrument), 'rb'))
 
     return tePC
 

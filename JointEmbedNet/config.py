@@ -7,11 +7,11 @@ PATH_FBA_SPLIT = "/media/Data/split_dill/"
 band = "symphonic" #symphonic middle
 split = "new" # old: 2013~2015, new: 2013~2018
 
-data_all_pc = "{}_2_pc_6_fix.dill"
+data_all_pc = "{}_2_pc_6.dill"
 
-data_train_pc = {"old": "{}_2_pc_3_train_oldsplit.dill", "new": "{}_2_pc_6_train.dill"}
-data_valid_pc = {"old": "{}_2_pc_3_valid_oldsplit.dill", "new": "{}_2_pc_6_valid.dill"}
-data_test_pc = {"old": "{}_2_pc_3_test_oldsplit.dill", "new": "{}_2_pc_6_test.dill"}
+data_train_pc = {"new": "{}_2_pc_6_train.dill"}
+data_valid_pc = {"new": "{}_2_pc_6_valid.dill"}
+data_test_pc = {"new": "{}_2_pc_6_test.dill"}
 
 midi_aligned_s = "{}_2_midi_aligned_s_6.dill"
 

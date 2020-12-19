@@ -1,21 +1,16 @@
-import os
-import sys
-from collections import defaultdict
 import dill
 import numpy as np
-import scipy.io
-import pypianoroll
-import pretty_midi
 import h5py
+import os
 from scipy.signal import decimate
-import matplotlib.pyplot as plt
 import time
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 # Initialize input params, specify the band, intrument, segment information
-BAND = ['middle']
+BAND = ['middle', 'symphonic']
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
-SEGMENT = 2
+SEGMENT = 2 # segment no, always 2: technical etude
 YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
 
 dill_name = {'middle': 'middle_2_pc_6.dill', 'symphonic': 'symphonic_2_pc_6.dill'}
@@ -26,19 +21,19 @@ midi_op = 'res12'
 
 fail_list = []
 
-if os.uname()[1] == 'mig1':
-    PATH_FBA_DILL = "/media/SSD/FBA/saved_dill/"
-    PATH_FBA_MIDI = "/media/SSD/FBA/fall19/data/midi/"
-    PATH_FBA_MTX = "/media/SSD/FBA/fall19/data/matrix/"
-    cpu_num = 3
-else:
-    PATH_FBA_DILL = "/media/Data/saved_dill/"
-    PATH_FBA_MIDI = "/media/Data/fall19/data/midi/"
-    PATH_FBA_MTX = "/media/Data/fall19/data/matrix/"
-    cpu_num = 5
+PATH_FBA_DILL = "/media/SSD/FBA/saved_dill/"
+PATH_FBA_MIDI = "/media/SSD/FBA/fall19/data/midi/"
+PATH_FBA_MTX = "/media/SSD/FBA/fall19/data/matrix/"
+cpu_num = 3
 
 def load_data(band='middle', midi_op='res12'):
-    import dill
+    '''
+    Load pc and sc dill files computed in data_process.py
+
+    :param band: 'middle' or 'symphonic'
+    :param midi_op: 'res12'
+    :return: pc and sc dictionaries
+    '''
     assert (feat == 'pitch contour')
 
     # Read features from .dill files
@@ -52,6 +47,12 @@ def load_data(band='middle', midi_op='res12'):
     return PC, SC
 
 def simpleDTW(D):
+    '''
+    Apply DTW to the distance matrix D
+
+    :param D: Distance matrix
+    :return: Best path
+    '''
     m, n = D.shape
     dir_vec = [[1,0],[0,1],[1,1]]
     dir = np.zeros_like(D)
@@ -85,8 +86,16 @@ def simpleDTW(D):
 
 
 def computeDistanceMatrixAndAlignment(perf, SC):
+    '''
+    Compute distance matrix and alignment for one performance
 
-    #print(perf['year'], perf['student_id'])
+    :param perf: a dictionary { 'year': int, 'instrument': str, 'pitch_contour': np.array(), 'audio': [] }
+    :param SC: all sc, will retrieve the specific one according to the year and instrument info in perf
+    :return: perf: the same dictionary with two additional items {..., 'matrix': np.array(2D), 'alignment': np.array()}
+    '''
+
+    # print("Computing distance matrix and alignment for year {}: student: {}".format(perf['year'], perf['student_id']))
+
     try:
         year = perf['year']
         instrument = perf['instrumemt']
@@ -102,12 +111,15 @@ def computeDistanceMatrixAndAlignment(perf, SC):
         idx_sc = np.array([i for i in range(sc.shape[0]) if sc[i] != 0])
         idx_pc = np.array([i for i in range(pc.shape[0]) if pc[i] > 1])
 
+        # find silence frames
         silence_pc = (pc < 1)
         pc[pc < 1] = 1
 
-        wav_pitch_contour_in_midi = 69 + 12 * np.log2(pc / 440);
+        wav_pitch_contour_in_midi = 69 + 12 * np.log2(pc / 440)
         wav_pitch_contour_in_midi[silence_pc] = 0
 
+        # Compute distance matrix
+        # Note: we use wrapped distance here to resolve the octave errors in the pitch tracker
         N = 12 # octave
         D = np.zeros((len(sc), len(wav_pitch_contour_in_midi)))
         for i in np.arange(len(sc)):
@@ -116,8 +128,11 @@ def computeDistanceMatrixAndAlignment(perf, SC):
                 D[i, j] = diff % N
                 D[i, j] = np.min([D[i, j], 12 - D[i, j]]) + np.min([1, np.floor(diff / N)])
 
-        # dtw
+        # Apply DTW
         path = simpleDTW(D[~silence_sc,:][:, ~silence_pc])
+
+        # For each frame in pc, find the aligned sc idx
+        # Reminder: for JointEmbedNet and SIConvNet we take 'aligned pc and sc' as input
 
         pc_to_sc = np.zeros_like(idx_pc)
         for i in np.arange(len(path)-1, -1, -1):
@@ -152,7 +167,7 @@ def computeDistanceMatrixAndAlignment(perf, SC):
 
         assert np.sum(np.diff(alignment)>=0) == alignment.shape[0]-1
 
-        # value for (silence, non-silence) pair
+        # compute value for (silence, non-silence) and (non-silence, silence) pair
         p = np.mean(D[~silence_sc,:][:, ~silence_pc])
         # replace the values in the matrix
         D[np.ix_(silence_sc, ~silence_pc)] = p
@@ -160,16 +175,19 @@ def computeDistanceMatrixAndAlignment(perf, SC):
 
         D = D.astype(np.float16)
         perf['matrix'] = D
-        #print(D.shape)
         perf['alignment'] = alignment
     except:
         fail_list.append(perf)
     return perf
 
 def compute_mat_aln_for_all():
+    '''
+        Compute the matrix and DTW alignment for all (sc, pc) pairs
+
+    '''
+
     # create data holder
     matrix_data = []
-    from joblib import Parallel, delayed
     # instantiate the data utils object for different instruments and create the data
     for band in BAND:
         PC, SC = load_data(band=band, midi_op=midi_op)
@@ -186,6 +204,7 @@ def compute_mat_aln_for_all():
             print('{} to {}'.format(p[i], p[i+1]))
 
             file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(len(YEAR)) + "_" + str(i)
+            print("Saving to " + file_name)
             with open(PATH_FBA_MTX + file_name + '.dill', 'wb') as f:
                 dill.dump(matrix_data, f)
 
@@ -194,9 +213,15 @@ def compute_mat_aln_for_all():
 
 
 def combine_h5(band):
+    '''
+    Combine the h5 tmp files produced by multiprocessing in compute_mat_aln_for_all()
+    :param band: 'middle' or 'symphonic'
+    :return:
+    '''
+
     # save matrix to an h5py file
-    sc_dim = 1320 # middle: 1320; symphonic: 1548
-    pc_dim = 8000# middle: 7000; symphonic: 7174
+    sc_dim = 1320 # maxmimum sc length: middle: 1320; symphonic: 1548
+    pc_dim = 8000 # maximum pc length: middle: 7000; symphonic: 7174
     cnt = 0
 
     f = h5py.File(PATH_FBA_MTX + '{}_{}_{}_matrix.h5'.format(band, SEGMENT, len(YEAR)), 'w')
@@ -214,7 +239,7 @@ def combine_h5(band):
     for i_inter in np.arange(len(total_num[band])-1):
         file_name = band + '_' + str(SEGMENT) + '_matrix_' + str(len(YEAR)) + '_' + str(i_inter)
         tmpdillfile = PATH_FBA_MTX + file_name + '.dill'
-        print(tmpdillfile)
+        print("Combining " + tmpdillfile)
         performance = np.array(dill.load(open(tmpdillfile, 'rb')))
         for perf in performance:
             if 'matrix' not in perf.keys() or 'alignment' not in perf.keys():
@@ -227,7 +252,8 @@ def combine_h5(band):
 
             if pc_dim_i > pc_dim:
                 continue
-            #
+
+            # deprecated code for finding the maximum lengths
             # if sc_dim_i > sc_dim:
             #     sc_dim = sc_dim_i
             # if pc_dim_i > pc_dim:
@@ -246,16 +272,22 @@ def combine_h5(band):
 
             cnt = cnt + 1
 
-    print(sc_dim, pc_dim)
-    print("write {} matrices.".format(cnt))
+    print("sc_dim: {} pc_dim: {}".format(sc_dim, pc_dim))
+    print("Wrote {} matrices.".format(cnt))
     f.close()
 
+    print("Saving index file...")
     print(id2idx)
     with open(PATH_FBA_MTX + band + '_id2idx_' + str(len(YEAR)) + '.dill', 'wb') as f:
         dill.dump(id2idx, f)
 
 def combine_alignment(band):
-    # then create a .dill file without {audio, matrix} and with {alignment}
+    '''
+    Create a .dill file without {audio, matrix} and with {alignment}, because matrices are saved in the h5 file
+
+    :param band: 'middle' or 'symphonic'
+    '''
+
     alignment_midi = {}
 
     # read midis for that year
@@ -277,7 +309,7 @@ def combine_alignment(band):
             if 'alignment' not in perf.keys():
                 print(perf['year'], perf['student_id'])
                 continue
-            #assert(perf['pitch_contour'].shape[0] == perf['alignment'].shape[0])
+            # assert(perf['pitch_contour'].shape[0] == perf['alignment'].shape[0])
             alignment_midi[perf['year']][perf['student_id']] = perf['alignment']
 
     alignment_dill['alignment'] = alignment_midi
@@ -285,10 +317,14 @@ def combine_alignment(band):
     with open('{}{}_2_midi_aligned_s_{}.dill'.format(PATH_FBA_MIDI, band, str(len(YEAR))), 'wb') as f:
         dill.dump(alignment_dill, f)
 
-# # compute all bands in BAND
-# compute_mat_aln_for_all()
-#
-# # specify the band
-# combine_h5('middle')
-#
-# combine_alignment('middle')
+
+if __name__ == "__main__":
+    # compute all bands in BAND
+    compute_mat_aln_for_all()
+
+    # specify the band
+    combine_h5('middle')
+    combine_alignment('middle')
+
+    combine_h5('symphonic')
+    combine_alignment('symphonic')

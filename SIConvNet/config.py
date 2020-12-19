@@ -10,7 +10,7 @@ PATH_FBA_SPLIT = "/media/Data/split_dill/"
 band = "middle"
 split = "new"  # old: 2013~2015, new: 2013~2018
 
-data_all_pc = "{}_2_pc_6_fix.dill"
+data_all_pc = "{}_2_pc_6.dill"
 
 data_train_pc = {"old": "{}_2_pc_3_train_oldsplit.dill", "new": "{}_2_pc_6_train.dill"}
 data_valid_pc = {"old": "{}_2_pc_3_valid_oldsplit.dill", "new": "{}_2_pc_6_valid.dill"}

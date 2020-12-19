@@ -2,16 +2,10 @@ import dill
 import numpy as np
 import os
 
-if os.uname()[1] == 'mig1':
-    PATH_FBA_DILL = "/media/SSD/FBA/saved_dill/"
-    PATH_FBA_MIDI = "/media/SSD/FBA/fall19/data/midi/"
-    PATH_FBA_MTX = "/media/SSD/FBA/fall19/data/matrix/"
-    cpu_num = 3
-else:
-    PATH_FBA_DILL = "/media/Data/saved_dill/"
-    PATH_FBA_MIDI = "/media/Data/fall19/data/midi/"
-    PATH_FBA_MTX = "/media/Data/fall19/data/matrix/"
-    cpu_num = 5
+PATH_FBA_DILL = "/media/SSD/FBA/saved_dill/"
+PATH_FBA_MIDI = "/media/SSD/FBA/fall19/data/midi/"
+PATH_FBA_MTX = "/media/SSD/FBA/fall19/data/matrix/"
+cpu_num = 3
 
 BAND = ['middle']
 INSTRUMENT = ['Alto Saxophone', 'Bb Clarinet', 'Flute']
@@ -19,6 +13,9 @@ SEGMENT = 2
 YEAR = ['2013', '2014', '2015', '2016', '2017', '2018']
 
 def check_num_by_year(dillFile):
+    '''
+    Check number of performances by year (to get the statistics)
+    '''
 
     performances = dill.load(open(dillFile, 'rb'))
 
@@ -26,7 +23,7 @@ def check_num_by_year(dillFile):
 
     for perf in performances:
         cnt[perf['year']] = cnt[perf['year']] + 1
-        #print(perf['year'], perf['pitch_contour'].shape)
+        # print(perf['year'], perf['pitch_contour'].shape)
 
     print(cnt)
 
@@ -60,7 +57,7 @@ def check_failed_perfs_and_remove(band):
 
         print(len(PC))
 
-        with open(PATH_FBA_DILL + 'middle_2_pc_6_fix.dill', 'wb') as f:
+        with open(PATH_FBA_DILL + 'middle_2_pc_6.dill', 'wb') as f:
             dill.dump(list(PC), f)
 
     if band == 'symphonic':
@@ -95,10 +92,14 @@ def check_failed_perfs_and_remove(band):
 
         print(len(PC))
 
-        with open(PATH_FBA_DILL + 'symphonic_2_pc_6_fix.dill', 'wb') as f:
+        with open(PATH_FBA_DILL + 'symphonic_2_pc_6.dill', 'wb') as f:
             dill.dump(list(PC), f)
 
+# check failed performances and remove
+check_failed_perfs_and_remove('middle')
 check_failed_perfs_and_remove('symphonic')
 
-# dillFile = '/media/Data/saved_dill/symphonic_2_pc_6_fix.dill'
-# check_num_by_year(dillFile)
+dillFile = '/media/Data/saved_dill/symphonic_2_pc_6.dill'
+check_num_by_year(dillFile)
+dillFile = '/media/Data/saved_dill/middle_2_pc_6.dill'
+check_num_by_year(dillFile)
