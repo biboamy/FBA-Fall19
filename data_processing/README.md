@@ -6,7 +6,9 @@ Note that the audio and pitch contour are not publicly available.
 Therefore you cannot reproduce the results using the original data. 
 If you want to adapt the code to your data, this document might be helpful.
 
-Acronym: PC = pitch contour, SC = score
+Acronyms: PC (or pc) = pitch contour, SC (or sc) = score
+
+![alt text](FBA.png "Data Preprocessing")
 
 Data folder structure:
 ```
