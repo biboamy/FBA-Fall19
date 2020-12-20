@@ -141,7 +141,7 @@ Below is a quick explanation of the variables used:
 * self.xPC: the content of the pc file, dict()
 * self.xSC: the content of the sc file (with alignment info), dict()
 * mXPC: the pitch contour of the sample (performance), np.array()
-* SC: the pianoroll midi score of the sample, np.array(2D)
+* SC: the pianoroll midi score of the sample -> score contour after np.argmax, np.array(2D)->np.array()
 * mXSC: the midi 'contour' of the sample, np.array()
 * mY: the target assessment score, int
 * align: the same shape as mXPC, indicating <u>the aligned position in score for each time frame of pc</u>
