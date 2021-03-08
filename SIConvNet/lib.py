@@ -4,6 +4,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 from config import *
+from scipy import ndimage
+from test_utils import visualize
 
 
 def normalize_pitch(pitch_tensor):
@@ -17,6 +19,7 @@ def normalize_midi(midi_tensor):
 def mse_loss(pre, tar):
     loss_func = nn.MSELoss()
     # pre = torch.sigmoid(pre)
+
     loss = loss_func(pre, tar)
     return loss
 
@@ -99,58 +102,66 @@ class Data2Torch(Dataset):
             self.align = data[1]['alignment']
 
     def __getitem__(self, index):
+        try:
+            # pitch contour
+            PC = self.xPC[index]['pitch_contour']
+            mXPC = torch.from_numpy(PC).float()
+            # ratings
+            mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
+            mY = mY[score_choose] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
 
-        # pitch contour
-        PC = self.xPC[index]['pitch_contour']
-        mXPC = torch.from_numpy(PC).float()
-        # ratings
-        mY = torch.from_numpy(np.array([i for i in self.xPC[index]['ratings']])).float()
-        mY = mY[score_choose] # ratting order (0: musicality, 1: note accuracy, 2: rhythmetic, 3: tone quality)
+            if self.midi_op in ['sec', 'beat', 'resize']:
+                # musical score
+                year = self.xPC[index]['year']
+                instrument = self.xPC[index]['instrumemt']
+                # score feature, extract as a sequence
+                SC =  self.xSC[instrument][year]
 
-        if self.midi_op in ['sec', 'beat', 'resize']:
-            # musical score
-            year = self.xPC[index]['year']
-            instrument = self.xPC[index]['instrumemt']
-            # score feature, extract as a sequence
-            SC =  self.xSC[instrument][year]
+                # sample the midi to the length of audio
+                if self.resample == True:
+                    l_target = PC.shape[0]
+                    t_midi = SC.get_end_time()
+                    mXSC = SC.get_piano_roll(fs = np.int(l_target / t_midi))
+                    l_midi = mXSC.shape[1]
+                    # pad 0 to ensure same length as feature
+                    mXSC = np.pad(mXSC, ((0,0),(0,l_target-l_midi)), 'constant')
+                    mXSC = np.argmax(mXSC, axis=0)
+                    mXSC = torch.from_numpy(mXSC).float()
 
-            # sample the midi to the length of audio
-            if self.resample == True:
-                l_target = PC.shape[0]
-                t_midi = SC.get_end_time()
-                mXSC = SC.get_piano_roll(fs = np.int(l_target / t_midi))
-                l_midi = mXSC.shape[1]
-                # pad 0 to ensure same length as feature
-                mXSC = np.pad(mXSC, ((0,0),(0,l_target-l_midi)), 'constant')
-                mXSC = np.argmax(mXSC, axis=0)
+                else:
+                    SC = np.argmax(SC, axis=0)
+                    mXSC = torch.from_numpy(SC).float()
+                oup = [mXPC, mXSC, mY]
+
+            elif self.midi_op == 'aligned':
+                year = self.xPC[index]['year']
+                id = self.xPC[index]['student_id']
+                mXSC = self.xSC[year][str(id)]
                 mXSC = torch.from_numpy(mXSC).float()
+                oup = [mXPC, mXSC, mY, id]
+
+            elif self.midi_op == 'aligned_s':
+                year = self.xPC[index]['year']
+                instrument = self.xPC[index]['instrumemt']
+                id = self.xPC[index]['student_id']
+                SC =  self.xSC[instrument][year]
+                SC = np.argmax(SC, axis=0)
+                
+                for i in range(1, len(SC)-1):
+                    if SC[i] == 0 and SC[i+1] != 0 and SC[i-1] != 0:
+                        SC[i] = SC[i-1]
+
+                mXSC = torch.from_numpy(SC).float()
+                align = self.align[year][id]
+                if normalize:
+                    mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
+                oup = [mXPC, mXSC, mY, align, [id, year, instrument]]
 
             else:
-                SC = np.argmax(SC, axis=0)
-                mXSC = torch.from_numpy(SC).float()
-            oup = [mXPC, mXSC, mY]
-
-        elif self.midi_op == 'aligned':
-            year = self.xPC[index]['year']
-            id = self.xPC[index]['student_id']
-            mXSC = self.xSC[year][str(id)]
-            mXSC = torch.from_numpy(mXSC).float()
-            oup = [mXPC, mXSC, mY]
-
-        elif self.midi_op == 'aligned_s':
-            year = self.xPC[index]['year']
-            instrument = self.xPC[index]['instrumemt']
-            id = self.xPC[index]['student_id']
-            SC =  self.xSC[instrument][year]
-            SC = np.argmax(SC, axis=0)
-            mXSC = torch.from_numpy(SC).float()
-            align = self.align[year][id]
-            if normalize:
-                mXPC, mXSC = normalize_pc_and_sc(mXPC, mXSC)
-            oup = [mXPC, mXSC, mY, align]
-
-        else:
-            raise ValueError('Please input the correct model')
+                raise ValueError('Please input the correct model')
+        except Exception as e:
+            index = index - 1 if index > 0 else index + 1
+            return self.__getitem__(index)
 
         return oup
     
@@ -180,23 +191,38 @@ def my_collate(collate_params, batch):
 
         for i, data in enumerate(batch):
             pc, sc = [], []
+            pitch = data[0]
+            idx_pc = np.array([i for i in range(pitch.shape[0]) if pitch[i] > 0])
+            pitch = pitch[np.where(pitch > 0)]
+            
+
+            score = data[1]
+            #score = score[np.where(score > 0)]
+            align = data[3]
+            align = np.repeat(align, 5)
+            #align = align[np.where(pitch > 0)]
+            print(pitch.shape, align.shape)
             for j in range(num):
-                start = round(random.uniform(0, len(data[0])-c_size-10)) # -10: possible dismatch in size between pc & alignment
-                pc.append(data[0][start:start+c_size].view(1,c_size))
+                start = 0 #round(random.uniform(0, len(pitch)-c_size-10)) # -10: possible dismatch in size between pc & alignment
+                pc.append(pitch[start:start+c_size].view(1,c_size))
 
                 if len(data)>3:
-                    idx = np.arange(np.floor(data[3][np.int(start/5)]), np.floor(data[3][np.int((start+c_size)/5)]+1))
-                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+                    idx = np.arange(np.floor(align[idx_pc[np.int(start)]]), np.floor(align[idx_pc[np.int((start+c_size))]]+1))
+                    idx[idx >= score.shape[0]] = score.shape[0] - 1
 
-                    tmpsc = data[1][idx]
-                    xval = np.linspace(0, idx.shape[0]-1, num=c_size)
+                    tmpsc = score[idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=idx_pc[np.int(start+c_size)]-idx_pc[np.int(start)])
                     x = np.arange(idx.shape[0])
                     sc_interp = np.interp(xval, x, tmpsc)
 
+                    sc_interp = sc_interp[idx_pc[np.int(start): np.int((start+c_size))]-idx_pc[np.int(start)]]
+
                     sc.append(torch.Tensor(sc_interp).view(1,-1))
                 else:
-                    sc.append(data[1][start:start+c_size].view(1,c_size))
-
+                    sc.append(score[start:start+c_size].view(1,c_size))
+                #print(pc[0].shape, sc[0].shape)
+                visualize(pc[0][0].detach().cpu().numpy(), pc[0][0].detach().cpu().numpy(), sc[0][0].detach().cpu().numpy(), f'pic/{str(i)}.png')
+                print(i)
                 batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num))
 
         return batch
@@ -290,7 +316,7 @@ def test_collate(collate_params, batch):
             sc = torch.cat(sc, 0)
             y = torch.cat(y, 0).squeeze()
 
-            batch[i] = (pc, sc, y)
+            batch[i] = (pc, sc, y, data[-1])
 
         return batch
 
