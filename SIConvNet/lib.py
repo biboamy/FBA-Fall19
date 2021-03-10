@@ -192,37 +192,45 @@ def my_collate(collate_params, batch):
         for i, data in enumerate(batch):
             pc, sc = [], []
             pitch = data[0]
-            idx_pc = np.array([i for i in range(pitch.shape[0]) if pitch[i] > 0])
-            pitch = pitch[np.where(pitch > 0)]
-            
+            idx_pc = np.where(pitch > 0)[0]
+            pitch = pitch[(idx_pc,)]
 
             score = data[1]
             #score = score[np.where(score > 0)]
             align = data[3]
             align = np.repeat(align, 5)
             #align = align[np.where(pitch > 0)]
-            print(pitch.shape, align.shape)
+
             for j in range(num):
-                start = 0 #round(random.uniform(0, len(pitch)-c_size-10)) # -10: possible dismatch in size between pc & alignment
-                pc.append(pitch[start:start+c_size].view(1,c_size))
+                length = len(pitch)-c_size-10 if len(pitch) > c_size else 0
+                start = round(random.uniform(0, length)) # -10: possible dismatch in size between pc & alignment
+                
+                input_pc = pitch[start:start+c_size]
+                if len(input_pc) < c_size:
+                    input_pc = torch.cat((input_pc, torch.zeros(c_size-len(input_pc))))
+
+                pc.append(input_pc.view(1,c_size))
 
                 if len(data)>3:
-                    idx = np.arange(np.floor(align[idx_pc[np.int(start)]]), np.floor(align[idx_pc[np.int((start+c_size))]]+1))
+                    end = idx_pc[np.int((start+c_size))] if np.int((start+c_size)) < len(idx_pc) else idx_pc[-1]
+                    idx = np.arange(np.floor(align[idx_pc[np.int(start)]]), np.floor(align[end]+1))
                     idx[idx >= score.shape[0]] = score.shape[0] - 1
-
                     tmpsc = score[idx]
-                    xval = np.linspace(0, idx.shape[0]-1, num=idx_pc[np.int(start+c_size)]-idx_pc[np.int(start)])
+                    xval = np.linspace(0, idx.shape[0]-1, num=end-idx_pc[np.int(start)])
                     x = np.arange(idx.shape[0])
                     sc_interp = np.interp(xval, x, tmpsc)
 
-                    sc_interp = sc_interp[idx_pc[np.int(start): np.int((start+c_size))]-idx_pc[np.int(start)]]
+                    end_idx = np.int((start+c_size)) if np.int((start+c_size)) < len(idx_pc) else -1
+                    sc_interp = sc_interp[idx_pc[np.int(start): end_idx]-idx_pc[np.int(start)]]
+                    if len(sc_interp) < c_size:
+                        sc_interp = np.concatenate((sc_interp, np.zeros((c_size-len(sc_interp)))))
 
                     sc.append(torch.Tensor(sc_interp).view(1,-1))
                 else:
                     sc.append(score[start:start+c_size].view(1,c_size))
                 #print(pc[0].shape, sc[0].shape)
-                visualize(pc[0][0].detach().cpu().numpy(), pc[0][0].detach().cpu().numpy(), sc[0][0].detach().cpu().numpy(), f'pic/{str(i)}.png')
-                print(i)
+                #visualize(pc[0][0].detach().cpu().numpy(), pc[0][0].detach().cpu().numpy(), sc[0][0].detach().cpu().numpy(), f'pic/{str(i)}.png')
+                #print(i)
                 batch[i] = (torch.cat(pc,0), torch.cat(sc,0), data[2].repeat(num))
 
         return batch
@@ -279,39 +287,70 @@ def test_collate(collate_params, batch):
 
     def non_overlap(batch):
         pc, sc, y = [], [], []
-        for i, data in enumerate(batch):
-            size = int((len(data[0]) - 10) / c_size)  # -10: possible dismatch in size between pc & alignment
-            for j in range(size):
-                pc.append(data[0][j * c_size:j * c_size + c_size].view(1, c_size))
-                if len(data) > 3:
-                    idx = np.arange(np.floor(data[3][np.int(j * c_size / 5)]),
-                                    np.floor(data[3][np.int((j * c_size + c_size) / 5)] + 1))
-                    idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
 
-                    tmpsc = data[1][idx]
-                    xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
+        for i, data in enumerate(batch):
+            pitch = data[0]
+            idx_pc = np.where(pitch > 0)[0]
+            pitch = pitch[(idx_pc,)]
+            score = data[1]
+            align = data[3]
+            align = np.repeat(align, 5)
+
+            size = int((len(pitch) - 10) / c_size)  # -10: possible dismatch in size between pc & alignment
+            if size == 0: 
+                size = 1
+            
+            for j in range(size):
+                start = j * c_size # -10: possible dismatch in size between pc & alignment
+                input_pc = pitch[start:start+c_size]
+                if len(input_pc) < c_size:
+                    input_pc = torch.cat((input_pc, torch.zeros(c_size-len(input_pc))))
+
+                pc.append(input_pc.view(1, c_size))
+                if len(data) > 3:
+                    end = idx_pc[np.int((start+c_size))] if np.int((start+c_size)) < len(idx_pc) else idx_pc[-1]
+                    idx = np.arange(np.floor(align[idx_pc[np.int(start)]]), np.floor(align[end]+1))
+                    idx[idx >= score.shape[0]] = score.shape[0] - 1
+                    tmpsc = score[idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=end-idx_pc[np.int(start)])
                     x = np.arange(idx.shape[0])
                     sc_interp = np.interp(xval, x, tmpsc)
+
+                    end_idx = np.int((start+c_size)) if np.int((start+c_size)) < len(idx_pc) else -1
+                    sc_interp = sc_interp[idx_pc[np.int(start): end_idx]-idx_pc[np.int(start)]]
+                    if len(sc_interp) < c_size:
+                        sc_interp = np.concatenate((sc_interp, np.zeros((c_size-len(sc_interp)))))
+
                     sc.append(torch.Tensor(sc_interp).view(1, -1))
                 else:
                     sc.append(data[1][j * c_size:j * c_size + c_size].view(1, c_size))
                 y.append(data[2].view(1, 1))
+            '''
+            if int((len(pitch) - 10) / c_size) != 0:
+                start = len(pitch) - c_size - 1 # -10: possible dismatch in size between pc & alignment
+                input_pc = pitch[start:start+c_size]
+                if len(input_pc) < c_size:
+                    input_pc = torch.cat((input_pc, torch.zeros(c_size-len(input_pc))))
+                pc.append(input_pc.view(1, c_size))
+                if len(data) > 3:
+                    end = idx_pc[np.int((start+c_size))] if np.int((start+c_size)) < len(idx_pc) else idx_pc[-1]
+                    idx = np.arange(np.floor(align[idx_pc[np.int(start)]]), np.floor(align[end]+1))
+                    idx[idx >= score.shape[0]] = score.shape[0] - 1
+                    tmpsc = score[idx]
+                    xval = np.linspace(0, idx.shape[0]-1, num=end-idx_pc[np.int(start)])
+                    x = np.arange(idx.shape[0])
+                    sc_interp = np.interp(xval, x, tmpsc)
 
-            pc.append(data[0][-c_size:].view(1, c_size))
-            if len(data) > 3:
-                idx = np.arange(np.floor(data[3][np.int((len(data[0]) - c_size - 2) / 5)]),
-                                np.floor(data[3][np.int((len(data[0]) - 2) / 5)] + 1))
-                idx[idx >= data[1].shape[0]] = data[1].shape[0] - 1
+                    end_idx = np.int((start+c_size)) if np.int((start+c_size)) < len(idx_pc) else -1
+                    sc_interp = sc_interp[idx_pc[np.int(start): end_idx]-idx_pc[np.int(start)]]
+                    if len(sc_interp) < c_size:
+                        sc_interp = np.concatenate((sc_interp, np.zeros((c_size-len(sc_interp)))))
 
-                tmpsc = data[1][idx]
-                xval = np.linspace(0, idx.shape[0] - 1, num=c_size)
-                x = np.arange(idx.shape[0])
-                sc_interp = np.interp(xval, x, tmpsc)
-                sc.append(torch.Tensor(sc_interp).view(1, -1))
-            else:
-                sc.append(data[1][-c_size:].view(1, c_size))
-            y.append(data[2].view(1, 1))
-
+                    sc.append(torch.Tensor(sc_interp).view(1, -1))
+                else:
+                    sc.append(data[1][-c_size:].view(1, c_size))
+                y.append(data[2].view(1, 1))
+            '''
             pc = torch.cat(pc, 0)
             sc = torch.cat(sc, 0)
             y = torch.cat(y, 0).squeeze()
